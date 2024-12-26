@@ -19,12 +19,13 @@ This project calculates ammonium values, estimates nitrogen uptake rates, and ap
 ### 3. **Michaelis-Menten (MM) Model Calculation**
 - **Purpose**: Use calculated uptake rates to estimate parameters for the Michaelis-Menten model of nutrient uptake.
 - **Steps**:
-  - Standardize water volume in each vial and correct for organic matter.
+  - Standardize water volume in each vial and correct for ash-free dry mass.
   - Fit the Michaelis-Menten model, generate plots, and extract model parameters.
 
 ### 4. **Analysis of MM Models**
 - Analyze the results from the fitted Michaelis-Menten models.
-- Compare Gross Primary Production (GPP) and Ecosystem Respiration (ER).
+- Compare Gross Primary Production (GPP) and Ecosystem Respiration (ER) estimates from Loria et al.
+- Compare chl-a, pheo, and surface water and sediment nutrients
 
 ### 5. **Figures and Plotting**
 - Generate and save plots related to the analysis, stored in `BackgroundplotsNinc20241031`.
