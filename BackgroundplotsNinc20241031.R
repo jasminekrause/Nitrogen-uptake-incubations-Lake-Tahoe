@@ -8,10 +8,6 @@ library(ggplot2)
 library(patchwork)
 library(tidyr)
 
-system("git add BackgroundplotsNinc20241031.R")  # Stage the specific file
-system('git commit -m "Added BackgroundplotsNinc20241031.R script"')  # Commit the file
-system("git push -u origin main")  # Push to GitHub
-
 
 #### FLOW FIG ####
 # Site and parameter setup
