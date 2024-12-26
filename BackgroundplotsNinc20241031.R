@@ -8,6 +8,11 @@ library(ggplot2)
 library(patchwork)
 library(tidyr)
 
+system("git add BackgroundplotsNinc20241031.R")  # Stage the specific file
+system('git commit -m "Added BackgroundplotsNinc20241031.R script"')  # Commit the file
+system("git push -u origin main")  # Push to GitHub
+
+
 #### FLOW FIG ####
 # Site and parameter setup
 siteNo_GB <- "10336730"
@@ -95,15 +100,15 @@ data_sum <- data_long %>%
   
   # Add 'position' column based on site depth categories
   mutate(position = case_when(
-    site %in% c("SHNS1", "SHNS2", "SHNS3") ~ "SH(NS)",     # Shallow Littoral
-    site %in% c("SSNS1", "SSNS2", "SSNS3") ~ "SS(NS)",     # Shallow Littoral
-    site %in% c("GBNS1", "GBNS2", "GBNS3") ~ "GB(NS)",     # Gravel Bars
-    site %in% c("BWNS1", "BWNS2", "BWNS3") ~ "BW(NS)",     # Benthos
-    site == "GB0.5m" ~ "GB(0.5m)",                         # Shallow Gravel Bar
-    site == "BW0.5m" ~ "BW(0.5m)",                         # Shallow Benthos
-    site == "GBO" ~ "GB(Outlet)",                          # Outlet Gravel Bar
-    site == "BWO" ~ "BW(Outlet)",                          # Outlet Benthos
-    TRUE ~ NA_character_                                   # Optional: keep original if needed
+    site %in% c("SHNS1", "SHNS2", "SHNS3") ~ "SH(NS)", 
+    site %in% c("SSNS1", "SSNS2", "SSNS3") ~ "SS(NS)",    
+    site %in% c("GBNS1", "GBNS2", "GBNS3") ~ "GB(NS)",   
+    site %in% c("BWNS1", "BWNS2", "BWNS3") ~ "BW(NS)",    
+    site == "GB0.5m" ~ "GB(0.5m)",                
+    site == "BW0.5m" ~ "BW(0.5m)",             
+    site == "GBO" ~ "GB(Outlet)",            
+    site == "BWO" ~ "BW(Outlet)",            
+    TRUE ~ NA_character_            
   )) %>%
   
   # Convert 'date' to Date format
@@ -135,7 +140,7 @@ data_long_clean <- data_long_clean %>%
     )
   )
 
-# Ensure 'position' is a factor with the expected levels
+# Ensure 'position' is a factor
 data_long_clean <- data_long_clean %>%
   mutate(
     position = factor(position, levels = c(
@@ -168,33 +173,32 @@ p <- ggplot(data_long_clean %>%
   ) +
   scale_fill_manual(
     values = c(
-      "GB(Outlet)" = "#A67D17",    # Gold for GB
-      "GB(0.5m)" = "#A67D17",      # Gold for GB
-      "GB(NS)" = "#A67D17",        # Gold for GB
-      "BW(Outlet)" = "#3283A8",    # Blue for BW
-      "BW(0.5m)" = "#3283A8",      # Blue for BW
-      "BW(NS)" = "#3283A8",        # Blue for BW
-      "SH(NS)" = "#c76640",        # Red for SS
-      "SS(NS)" = "#136F63"         # Green for SH
+      "GB(Outlet)" = "#A67D17",  
+      "GB(0.5m)" = "#A67D17",     
+      "GB(NS)" = "#A67D17",  
+      "BW(Outlet)" = "#3283A8",    
+      "BW(0.5m)" = "#3283A8",     
+      "BW(NS)" = "#3283A8",      
+      "SH(NS)" = "#c76640",      
+      "SS(NS)" = "#136F63"
     ),
-    na.value = "gray"  # Optional: specify color for NA if any
+    na.value = "gray"  
   ) +
-  theme_minimal() +  # Minimal theme for clarity
+  theme_minimal() + 
   theme(
-    strip.background = element_rect(fill = "gray80", color = NA),  # Facet strip background
-    strip.text = element_text(size = 12, face = "bold"),  # Facet labels styling
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  # Rotate x-axis labels
-    axis.title.x = element_text(size = 14),  # X-axis title size
-    axis.title.y = element_text(size = 14),  # Y-axis title size
-    legend.position = "none",  # Remove the legend
-    panel.grid.major = element_line(color = "gray85", size = 0.25),  # Reduce gridlines
-    panel.grid.minor = element_blank(),  # Remove minor grid lines
-    plot.title = element_blank()  # Remove plot title
+    strip.background = element_rect(fill = "gray80", color = NA), 
+    strip.text = element_text(size = 12, face = "bold"),  
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  
+    axis.title.x = element_text(size = 14),  
+    axis.title.y = element_text(size = 14), 
+    legend.position = "none", 
+    panel.grid.major = element_line(color = "gray85", size = 0.25),  
+    panel.grid.minor = element_blank(),  
+    plot.title = element_blank()
   )
 
 # Save
 # ggsave("nut_plot_20241216.png", plot = p, width = 12, height = 8, dpi = 300)
-
 
 
 
@@ -216,7 +220,7 @@ SH_temp <- read.csv("Raw_dat/NS_SH_DO_dat_24.csv")
 
 #### PLOT OF DISCHARGE SWE AND TEMP
 # Define color palette for GB and BW
-temp_colors <- c("GB" = "#A67D17", "BW" = "#3283A8")  # Yellow for GB, Blue for BW
+temp_colors <- c("GB" = "#A67D17", "BW" = "#3283A8") 
 
 # Define highlight dates
 highlight_dates <- as.Date(c("2023-05-24", "2023-06-26", "2023-07-21"))
@@ -271,13 +275,13 @@ data_long <- data_long %>%
       site == "BW0.5m" ~ "BW(0.5m)",
       site == "GBO" ~ "GB(Outlet)",
       site == "BWO" ~ "BW(Outlet)",
-      TRUE ~ NA_character_  # Ensures unmatched sites are marked as NA
+      TRUE ~ NA_character_  
     ),
-    color_group = ifelse(grepl("GB", position), "GB", "BW"),  # Assign color group
+    color_group = ifelse(grepl("GB", position), "GB", "BW"),  
     month = factor(format(as.Date(date), "%b"), levels = month.abb[1:10])
   )
 
-# Filter data for January to October and remove rows with NA in 'position'
+# Filter data for January to October and remove NA 
 data_long_filtered <- data_long %>% 
   filter(month %in% month.abb[1:9], !is.na(position))
 
@@ -291,7 +295,7 @@ temp_month_plot <- ggplot(data_long_filtered, aes(x = month, y = temp_C, color =
   geom_smooth(aes(group = color_group, color = color_group), method = "loess", se = FALSE, linetype = "dashed", linewidth = 0.8) +
   labs(y = "Water Temperature (°C)", x = "Month", color = "Group", shape = "Position Group") +
   scale_color_manual(values = temp_colors) +
-  scale_shape_manual(values = c(16, 17, 15, 18, 3, 4, 8, 1)) +  # Custom shapes for each position
+  scale_shape_manual(values = c(16, 17, 15, 18, 3, 4, 8, 1)) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 12),
@@ -301,7 +305,7 @@ temp_month_plot <- ggplot(data_long_filtered, aes(x = month, y = temp_C, color =
     legend.position = "bottom"
   )
 
-# Combine the plots: stack discharge and SWE on the left, temperature plot on the right
+# Combine the plots
 combined_plot <- ((flow_plot / swe_plot) | temp_month_plot) + 
   plot_layout(widths = c(2, 1), heights = c(1, 1)) &
   theme(plot.margin = margin(10, 10, 10, 10))
