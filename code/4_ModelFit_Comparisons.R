@@ -71,15 +71,35 @@ fits_total_incub <- fits %>%
 # add category for Vmax and Km p values
 fits$Vmax_sig_0.05 <- ifelse(fits$p_value_Vmax < 0.05, yes = "yes", no = "no")
 fits$Km_sig_0.05 <- ifelse(fits$p_value_Km < 0.05, yes = "yes", no = "no")
-## which have both significant
+fits$Vmax_Km_sig_0.05 <- ifelse(fits$Vmax_sig_0.05 == "yes" & fits$Km_sig_0.05 == "yes", yes = "yes", no = "no")
 
+# summarize the number of sites
+fits_MM_sig <- fits %>%
+  group_by(Stream, Depth_Loc, Substrate, N_Type) %>%
+  summarise(Total = n(),
+            Vmax_sig = sum(grepl("yes", Vmax_sig_0.05)),
+            Km_sig = sum(grepl("yes", Km_sig_0.05)),
+            Vmax_Km_sig = sum(grepl("yes", Vmax_Km_sig_0.05)),)
+# calcuate the proportion of sites with saturating MM models
+fits_MM_sig$Prop_MM_bothsig <- fits_MM_sig$Vmax_Km_sig/fits_MM_sig$Total
 
+ggplot(fits_MM_sig, aes(Stream, Prop_MM_bothsig, color = Depth_Loc, shape = Substrate))+
+  geom_jitter(size = 4, width = 0.2)+
+  theme_bw()+
+  facet_grid(~N_Type)
 
+## Across all sites and dates, what proportion of incubations had sig MM?
+Prop_sigMM_summary <- fits_MM_sig %>%
+  group_by(Stream, Substrate, N_Type)%>%
+  summarise(Sum_Total = sum(Total),
+            Sum_Vmax_Km_sig = sum(Vmax_Km_sig))%>%
+  mutate(Prop_Sig = Sum_Vmax_Km_sig/Sum_Total)
+Prop_sigMM_summary
 
-
-
-
-
+ggplot(Prop_sigMM_summary, aes(Stream, Prop_Sig, fill = Substrate))+
+  geom_bar(stat = "identity")+
+  theme_bw()+
+  facet_grid(~N_Type + Substrate)
 
 
 
