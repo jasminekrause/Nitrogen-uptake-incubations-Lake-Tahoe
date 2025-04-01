@@ -59,16 +59,34 @@ fits <- fits %>%
 fits_total_incub <- fits %>%
   group_by(Stream, Depth_Loc, Substrate, N_Type) %>%
   count()
-
-
-
-
+#write.csv(fits_total_incub, "../data/final_incub_by_SiteLocSubstrateNType.csv")
 
 ##########################################################
 ## Filter which sites had MM models that fit
 ##########################################################
+# Vmax is the rate of uptake at saturating levels of S
+# Km which represents the half-saturation constant
+## What proportion of incubations had MM models that fit Vmax and Km?
 
-head(fit_MM)
+# add category for Vmax and Km p values
+fits$Vmax_sig_0.05 <- ifelse(fits$p_value_Vmax < 0.05, yes = "yes", no = "no")
+fits$Km_sig_0.05 <- ifelse(fits$p_value_Km < 0.05, yes = "yes", no = "no")
+## which have both significant
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
