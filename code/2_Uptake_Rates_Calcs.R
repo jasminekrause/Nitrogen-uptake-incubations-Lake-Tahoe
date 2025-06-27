@@ -38,7 +38,7 @@ decimateTime <- function(time) {
   return(time_new)
 }
 
-setwd("R:/Blaszczak_Lab/Ongoing Projects/Tahoe Data/Raw Data/N_inc/Raw/Uptake_Calculations")
+setwd("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tahoe/RProj Nearshore Greening/Step_2/")
 getwd()
 
 # Load raw datasets.
@@ -74,31 +74,31 @@ print(average_incubation_hours)
 
 dat_raw2 <- dat_raw1 %>%
   mutate(
-    Conc_mgNL_ed = pmin(NH4mgL, NO2_NO3_mgNL, na.rm = TRUE),  # Populate with non-NA values from NH4mgL and NO2_NO3_mgNL
+    Conc_mgNL_ed = pmin(NH4_mgNL, NO2_NO3_mgNL, na.rm = TRUE),  # Populate with non-NA values from NH4_mgNL and NO2_NO3_mgNL
     Conc_mgNL_ed = case_when(
-      Conc_mgNL_ed < 0.002 ~ ifelse(Analyte == "NH3", 0.001, Conc_mgNL_ed),  # If NH4mgL < 0.002, set to 0.001
+      Conc_mgNL_ed < 0.002 ~ ifelse(Analyte == "NH3", 0.001, Conc_mgNL_ed),  # If NH4_mgNL < 0.002, set to 0.001
       Conc_mgNL_ed < 0.003 & Analyte == "NO3" ~ 0.0015,  # If NO2_NO3_mgNL < 0.003 and Analyte is NO3, set to 0.0015
       TRUE ~ Conc_mgNL_ed  # Otherwise, keep the original value
     ),
-    Conc_µgNLK = 1000 * Conc_mgNL_ed,
+    Conc_ugNLK = 1000 * Conc_mgNL_ed,
     real_icu_time = ifelse(is.na(real_icu_time), "06:46:00", 
-      real_icu_time)
+                           real_icu_time)
   ) %>%
   ungroup()
 
 #filter out values less than 0
 dat_raw_nozero <- dat_raw2 %>%
-  filter(Conc_µgNLK > 0)
+  filter(Conc_ugNLK > 0)
 
 
-Chemcheck <- ggplot(dat_raw2, aes(x = Vial_num, y = NH4mgL, color=Location)) +
+Chemcheck <- ggplot(dat_raw2, aes(x = Vial_num, y = NH4_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
 Chemcheck2 <- ggplot(dat_raw2, aes(x = Vial_num, y = NO2_NO3_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
-Chemcheck3 <- ggplot(dat_raw2, aes(x = Vial_num, y = Conc_µgNLK, color=Location, 
-                                  shape=Analyte)) +
+Chemcheck3 <- ggplot(dat_raw2, aes(x = Vial_num, y = Conc_ugNLK, color=Location, 
+                                   shape=Analyte)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
 
@@ -116,29 +116,21 @@ Chemcheck3 <- ggplot(dat_raw2, aes(x = Vial_num, y = Conc_µgNLK, color=Location,
 dat_avg_before <- dat_raw_nozero %>%
   group_by(Site, Location, Inc_month, Type, Analyte, Spike_Âµg_L) %>%
   summarise(
-    Mean_Conc = mean(Conc_µgNLK, na.rm = TRUE),
-    SD_Conc = sd(Conc_µgNLK, na.rm = TRUE),
+    Mean_Conc = mean(Conc_ugNLK, na.rm = TRUE),
+    SD_Conc = sd(Conc_ugNLK, na.rm = TRUE),
     .groups = "drop"
   )
 
 # we need to make a new column to facilitate joining.
-# should not have a deviation less than or greater than 20% from the mean
-# That dropped ~ 231 data points including 16 empty lines
-# however, this biases filtering out the lower concentration and blanks
-# trying to run without filtering first and will come back
 dat_raw_nozeroa <- dat_raw_nozero %>%
-  left_join(dat_avg_before, by = c("Site", "Location", "Type","Inc_month", "Analyte", "Spike_Âµg_L")) # %>%
-  # filter(Conc_µgNLK >= (Mean_Conc - (0.3 * Mean_Conc)) & Conc_µgNLK <= (Mean_Conc + (0.3 * Mean_Conc)))
-  
-# see which samples got filtered out
-samples_filtered_out <- anti_join(dat_raw_nozero, dat_raw_nozeroa, by = c("Site", "Location", "Type", "Inc_month", "Analyte", "Spike_Âµg_L", "Conc_µgNLK"))
+  left_join(dat_avg_before, by = c("Site", "Location", "Type","Inc_month", "Analyte", "Spike_Âµg_L"))
 
 ##SPIKES
 # filter out mean spike concentrations and join  them back to dataset
 mean_spike_conc_df <- dat_raw_nozeroa %>%
   filter(Type == "spike") %>%
   group_by(Shore, Inc_month, Analyte, Spike_Âµg_L) %>%
-  summarise(Mean_Spike_Conc = mean(Conc_µgNLK, na.rm = TRUE))
+  summarise(Mean_Spike_Conc = mean(Conc_ugNLK, na.rm = TRUE))
 
 dat_raw_nozerob <- dat_raw_nozeroa %>%
   left_join(mean_spike_conc_df, by = c("Shore","Inc_month", "Analyte", "Spike_Âµg_L"))
@@ -159,17 +151,17 @@ dat_raw_nozerob$Mean_Spike_Conc[dat_raw_nozerob$Spike_Âµg_L == 100 & is.na(dat_r
 # Correct the calculation of change in concentration
 dat_raw_nozeroc <- dat_raw_nozerob %>%
   mutate(
-    delta_Conc_µgNL = Conc_µgNLK - Mean_Spike_Conc, # Subtract mean spike concentration
+    delta_Conc_ugNL = Conc_ugNLK - Mean_Spike_Conc, # Subtract mean spike concentration
     real_icu_hr = hour(as_hms(real_icu_time)) + (minute(as_hms(real_icu_time)) / 60), # Calculate total hours
     real_icu_hrc = ifelse(is.na(real_icu_time) | real_icu_hr > 7 + 41/60, 6 + 46/60, real_icu_hr), # Correct ICU hours
-    delta_Conc_µgNLhr = delta_Conc_µgNL / real_icu_hrc # Calculate delta Conc_µgNL per hour
+    delta_Conc_ugNLhr = delta_Conc_ugNL / real_icu_hrc # Calculate delta Conc_?gNL per hour
   )
 
 # Calculate mean uptake rates for water using Assigned_Location for grouping
 dat_avg_water <- dat_raw_nozeroc %>%
   filter(Type == "water") %>%
   group_by(Inc_month, Location, Analyte, Mean_Spike_Conc) %>%
-  summarize(water_delta_Conc_µgNLhr = mean(delta_Conc_µgNLhr, na.rm = TRUE), .groups = 'drop')
+  summarize(water_delta_Conc_ugNLhr = mean(delta_Conc_ugNLhr, na.rm = TRUE), .groups = 'drop')
 
 # We need to make sure SH and SS are included
 dat_raw_nozeroc_adjusted <- dat_raw_nozeroc %>%
@@ -185,7 +177,7 @@ dat_raw_nozerod <- left_join(dat_raw_nozeroc_adjusted, dat_avg_water,
 
 # Calculate net uptake rates including uptake in the water column using the original Location
 dat_raw_nozero <- dat_raw_nozerod %>%
-  mutate(net_delta_Conc_µgNLhr = delta_Conc_µgNLhr - water_delta_Conc_µgNLhr) # Use mean spike conc
+  mutate(net_delta_Conc_ugNLhr = delta_Conc_ugNLhr - water_delta_Conc_ugNLhr) # Use mean spike conc
 
 
 #### Export data. ####
@@ -196,26 +188,29 @@ names(dat_raw_nozero)
 dat_tidy <- dat_raw_nozero %>%
   filter(Type %in% c("biofilm", "sediment")) %>%
   dplyr::select(Inc_month, Site, Location, Depth, Analyte, Spike_Âµg_L, Mean_Spike_Conc,
-                Volume_lake_water_L, Type, bin, NO2_NO3_mgNL, NH3_mgNL,
-                NH4mgL,Conc_µgNLK,
-                AFDM_g, real_icu_hrc, delta_Conc_µgNL, delta_Conc_µgNLhr,
-                water_delta_Conc_µgNLhr, net_delta_Conc_µgNLhr)
+                Volume_lake_water_L, Type, NO2_NO3_mgNL, NH4_mgNL,
+                NH4_mgNL,Conc_ugNLK,pH,Weight_g,
+                AFDM_g, real_icu_hrc, delta_Conc_ugNL, delta_Conc_ugNLhr,
+                water_delta_Conc_ugNLhr, net_delta_Conc_ugNLhr)
 
 # Visualize
 dat_tidy <- dat_tidy %>%
   mutate(Inc_month = factor(Inc_month, levels = c("May", "June", "July")))
 
 check_dat_tidy <- ggplot(dat_tidy, aes(x = real_icu_hrc,
-                                       y = net_delta_Conc_µgNLhr, 
+                                       y = net_delta_Conc_ugNLhr, 
                                        color = Location, shape = Type)) +
   geom_point() + 
   theme_bw() + 
   facet_grid(. ~ Inc_month)  # Months will now appear in the correct order
 
 check_dat_tidy
+
 #ggsave("check_dat_tidy_plot.png", check_dat_tidy, width = 10, height = 6, dpi = 300)
 
 # Export for use in Michaelis-Menten calculation script.
-# saveRDS(dat_tidy, "N_Incubation_Uptake_Rates_nofilter_20240924.rds")
+# saveRDS(dat_tidy, "N_Incubation_Uptake_Rates_20240924.rds")
+# write_csv(dat_tidy, "N_Incubation_Uptake_Rates_20240924.csv")
+
 
 # End of script.

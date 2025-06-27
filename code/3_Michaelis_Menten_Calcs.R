@@ -21,11 +21,11 @@ library(drc)
 library(patchwork)
 library(ggplot2)
 
-setwd("R:/Blaszczak_Lab/Ongoing Projects/Tahoe Data/Raw Data/N_inc/Raw/Uptake_Calculations/")
 getwd()
+setwd("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tahoe/RProj Nearshore Greening/Step_3/")
 
 # Load data
-Incubation_all <- readRDS("N_Incubation_Uptake_Rates_nofilter_20240924.rds")
+Incubation_all <- readRDS("N_Incubation_Uptake_Rates_20240924.rds")
 print(names(Incubation_all))
 
 #### CORRECT FOR AFDW ####
@@ -34,9 +34,53 @@ print(names(Incubation_all))
 # Make uptake rates mostly positive to visualize.
 # Final units are in ugN/g AFDW-hr
 dat <- Incubation_all %>%
-  mutate(net_delta_Conc_ugNLhr_OM = (((-1 * net_delta_Conc_µgNLhr * Volume_lake_water_L)/AFDM_g))) # correct OM here
+  mutate(net_delta_Conc_ugNLhr_OM = (((-1 * net_delta_Conc_ugNLhr * Volume_lake_water_L)/AFDM_g))) # correct OM here
 
 # dat$Inc_month <- as.character(dat$Inc_month)
+
+# visualize raw uptake net_delta_Conc_ugNLhr, with correction for Sample_dryweight_g, and net_delta_Conc_ugNLhr_OM
+# Raw uptake (converted to positive)
+hist(dat$net_delta_Conc_ugNLhr * -1,
+     main = "Raw Uptake", xlab = "µg N/L/hr")
+
+# Normalized by dry mass (converted to positive)
+hist((dat$net_delta_Conc_ugNLhr * -1) / dat$Weight_g,
+     main = "Per gram", xlab = "µg N/L/hr/g")
+
+# Normalized by OM (already positive)
+hist(dat$net_delta_Conc_ugNLhr_OM,
+     main = "Per OM", xlab = "µg N/L/hr/g OM")
+
+
+# plot together
+dat_uptake <- dat %>%
+  mutate(
+    raw_uptake = net_delta_Conc_ugNLhr * -1,
+    weight_corrected = net_delta_Conc_ugNLhr / Weight_g * -1,
+    afdm_corrected = net_delta_Conc_ugNLhr_OM
+  ) %>%
+  pivot_longer(
+    cols = c(raw_uptake, weight_corrected, afdm_corrected),
+    names_to = "Metric", values_to = "Uptake"
+  ) %>%
+  mutate(
+    Metric = factor(Metric, levels = c(
+      "raw_uptake", 
+      "weight_corrected", 
+      "afdm_corrected"
+    ))
+  )
+
+correction_bio_sed <- ggplot(dat_uptake, aes(x = Type, y = Uptake, fill = Type)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "white") +
+  facet_wrap(~ Metric, scales = "free_y") +
+  labs(x = "Sample Type", y = "Uptake (µg N/L/hr)") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+# ggsave("correction_bio_sed.png",plot=correction_bio_sed)
+
+
 
 #### FIT MM MODELS WITH FILTERING ####
 
@@ -47,19 +91,19 @@ dat <- Incubation_all %>%
 dat$flag <- (
   (dat$Site == "BW0.5m" & dat$Inc_month == "July" & dat$Type == "biofilm" & dat$Analyte == "NH3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
     (dat$Site == "BW0.5m" & dat$Inc_month == "July" & dat$Type == "biofilm" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
-    (dat$Site == "BW0.5m" & dat$Inc_month == "July" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0 & dat$Spike_Âµg_L != 0) |
+    (dat$Site == "BW0.5m" & dat$Inc_month == "July" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0 & dat$Spike_µg_L != 0) |
     (dat$Site == "BW0.5m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NH3" & dat$net_delta_Conc_ugNLhr_OM > 200) |
     (dat$Site == "BW0.5m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM > 200) |
-    (dat$Site == "BW10m" & dat$Inc_month == "June" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$Spike_Âµg_L == 800) |
+    (dat$Site == "BW10m" & dat$Inc_month == "June" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$Spike_µg_L == 800) |
     (dat$Site == "BW3m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
-    (dat$Site == "GB0.5m" & dat$Inc_month == "May" & dat$Type == "biofilm" & dat$Analyte == "NO3" & dat$Spike_Âµg_L == 800) |
+    (dat$Site == "GB0.5m" & dat$Inc_month == "May" & dat$Type == "biofilm" & dat$Analyte == "NO3" & dat$Spike_µg_L == 800) |
     (dat$Site == "GB3m" & dat$Inc_month == "June" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < -50) |
     (dat$Site == "GB3m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
     (dat$Site == "GB10m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
     (dat$Site == "GB10m" & dat$Inc_month == "June" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM > 100) |
     (dat$Site == "SS3m" & dat$Inc_month == "June" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM > 40) |
     (dat$Site == "SS3m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$net_delta_Conc_ugNLhr_OM < 0) |
-    (dat$Site == "SH3m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$Spike_Âµg_L == 800)
+    (dat$Site == "SH3m" & dat$Inc_month == "May" & dat$Type == "sediment" & dat$Analyte == "NO3" & dat$Spike_µg_L == 800)
 )
 
 # count flags
@@ -76,6 +120,9 @@ dat %>%
 flagged_rows <- dat %>% filter(flag == TRUE)
 dat_filtered <- dat %>% filter(flag == FALSE)
 
+# create vertical line for "true" spike conc 
+# read the p val and ver
+
 # Preprocess data to ensure consistency in 'Site' names
 dat_filtered <- dat_filtered %>%
   mutate(Site = gsub("_", "", Site))
@@ -85,12 +132,13 @@ plots_directory <- "MM_plots_20250225_filtered"
 dir.create(plots_directory, showWarnings = FALSE, recursive = TRUE)
 print(paste("Directory created: ", plots_directory))
 
-# Define unique combinations
+# Define unique combinations from the dataset
 unique_combinations <- unique(dat_filtered[, c("Site", "Inc_month", "Type", "Analyte")])
 unique_combinations <- data.frame(lapply(unique_combinations, as.character), stringsAsFactors = FALSE)
 print(head(unique_combinations))
 
-# Function to fit and plot MM models 
+
+# Function to fit and plot MM models with confidence intervals and p-values
 fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data) {
   
   # Filter data for the specific combination
@@ -100,19 +148,19 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
            Type == type,
            Analyte == analyte)
   
-  # Debugging: Print the number of data points
+  # Debugging: Print the number of data points for the current combination
   print(paste("Number of data points:", nrow(specific_data)))
   
-  # Return NULL if no data points are available
+  # Return NULL if no data points are available for the combination
   if (nrow(specific_data) == 0) {
     print(paste("No data for:", site, inc_month, type, analyte))
     return(NULL)
   }
   
   # Identify unique spike concentrations for visualization
-  unique_spikes <- unique(specific_data$Spike_µg_L)
+  unique_spikes <- unique(specific_data$Spike_?g_L)
   
-  # Attempt to fit the Michaelis Menten (MM) model
+  # Attempt to fit the Michaelis-Menten (MM) model
   tryCatch({
     # Fit the MM model
     mm_model <- drm(net_delta_Conc_ugNLhr_OM ~ Mean_Spike_Conc, 
@@ -151,8 +199,8 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
       geom_line(data = pred_data, aes(x = Mean_Spike_Conc, y = net_delta_Conc_ugNLhr_OM), colour = "red") +
       geom_vline(xintercept = unique_spikes, linetype = "dashed", color = "green", size = 1) +  # Add dashed lines for spike concentrations
       theme_minimal() +
-      xlab("Concentration [µg/L]") +
-      ylab("Uptake Rate [µgN/gAFDW-hr]") +
+      xlab("Concentration [?g/L]") +
+      ylab("Uptake Rate [?gN/gAFDW-hr]") +
       ggtitle(paste(site, inc_month, type, analyte, sep = " - ")) +
       annotate("text", x = Inf, y = Inf, 
                label = paste("Vmax:", round(Vmax, 3), "\nCI:", round(Vmax_CI[1], 3), "-", round(Vmax_CI[2], 3),
@@ -174,8 +222,8 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
     plot <- ggplot() +
       geom_point(data = specific_data, aes(x = Mean_Spike_Conc, y = net_delta_Conc_ugNLhr_OM), colour = "blue") +
       theme_minimal() +
-      xlab("Concentration [µg/L]") +
-      ylab("Uptake Rate [µgN/gAFDW-hr]") +
+      xlab("Concentration [?g/L]") +
+      ylab("Uptake Rate [?gN/gAFDW-hr]") +
       ggtitle(paste(site, inc_month, type, analyte, " - Data Only"))
     
     # Return NULL for the model and the fallback plot
@@ -324,10 +372,10 @@ fit_and_plot_linear_model_annotate <- function(site, inc_month, type, analyte, d
            Type == type,
            Analyte == analyte)
   
-  # Debugging: Print the number of data points
+  # Debugging: Print the number of data points for the current combination
   print(paste("Number of data points:", nrow(specific_data)))
   
-  # Return NULL if no data points are available
+  # Return NULL if no data points are available for the combination
   if (nrow(specific_data) == 0) {
     print(paste("No data for:", site, inc_month, type, analyte))
     return(NULL)
@@ -478,6 +526,64 @@ ggplot(dat_filtered, aes(x = New_Site, y = AFDM_g)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for clarity
 
 
+
+## Uptake plots 
+# updated 2025-06-24
+## standardize the uptake across sediment and biofilms for the spike concentration
+dat_filtered <- dat_filtered %>%
+  mutate(
+    is_control = ifelse(Mean_Spike_Conc == 0, "control", "spiked"),
+    standardized_uptake = ifelse(Mean_Spike_Conc > 0, net_delta_Conc_ugNLhr_OM / Mean_Spike_Conc, NA)
+  )
+
+# raw uptake
+ggplot(dat_filtered %>% filter(Type %in% c("sediment", "biofilm")),
+       aes(x = Type, y = net_delta_Conc_ugNLhr_OM, fill = Type)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "white") +
+  labs(
+    title = "Raw Uptake Rates",
+    x = "Sample Type",
+    y = expression(paste("Uptake Rate (?gN gAFDM"^-1, " hr"^-1, ")"))
+  ) +
+  scale_fill_manual(values = c("sediment" = "#d95f02", "biofilm" = "#1b9e77")) +
+  theme_bw(base_size = 14) +
+  theme(legend.position = "none")
+
+# standardized uptake
+ggplot(dat_filtered %>% filter(Type %in% c("sediment", "biofilm")),
+       aes(x = Type, y = standardized_uptake, fill = Type)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "white") +
+  labs(
+    title = "Standardized Uptake Rates",
+    x = "Sample Type",
+    y = expression(paste("Standardized Uptake (?gN gAFDM"^-1, " hr"^-1, " per ?gN L"^-1, ")"))
+  ) +
+  scale_fill_manual(values = c("sediment" = "#d95f02", "biofilm" = "#1b9e77")) +
+  theme_bw(base_size = 14) +
+  theme(legend.position = "none")
+
+# plot uptake concentration vs uptake rate
+uptake_spike <- ggplot(dat_filtered %>% filter(Type %in% c("sediment", "biofilm")),
+                       aes(x = Mean_Spike_Conc, y = net_delta_Conc_ugNLhr_OM, color = Type)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Uptake Rate vs. Spike Concentration",
+    x = "Mean Spike Concentration (?gN/L)",
+    y = expression(paste("Uptake Rate (?gN gAFDM"^-1, " hr"^-1, ")")),
+    color = "Sample Type"
+  ) +
+  theme_bw(base_size = 14)
+
+# ggsave("Manuscript_figures/uptake_spike.png",plot=uptake_spike, width = 10, height = 8, dpi = 300, units = "in")
+
+
+
+
+
+
+
+
 #### boxplot for sediment
 # Filter for sediment only
 dat_sediment <- dat_filtered %>% filter(Type == "sediment")
@@ -511,36 +617,38 @@ print(afdm_boxplot)
 # ggsave("Manuscript_figures/afdm_boxplot.png",plot=afdm_boxplot, width = 10, height = 8, dpi = 300, units = "in")
 
 
+# Filter sediment data to only include spiked treatments
+dat_sediment_spiked <- dat_sediment %>%
+  filter(is_control != "control")  # or is_control == "spiked"
 
-## Uptake
 # Determine the global y-axis limits for sediment
-y_min_sed <- min(dat_sediment$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
-y_max_sed <- max(dat_sediment$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
+y_min_sed <- min(dat_sediment_spiked$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
+y_max_sed <- max(dat_sediment_spiked$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
 
-# Create the boxplot for sediment
-sediment_boxplot <- ggplot(dat_sediment, aes(x = factor(New_Site, levels = site_order), y = net_delta_Conc_ugNLhr_OM, fill = Type)) +
+# Boxplot for sediment
+sediment_boxplot <- ggplot(dat_sediment_spiked, aes(x = factor(New_Site, levels = site_order), y = net_delta_Conc_ugNLhr_OM, fill = Type)) +
   geom_boxplot(outlier.shape = 21, outlier.fill = "white", outlier.size = 2, outlier.color = "black") +  
-  facet_wrap(~ Inc_month + Analyte, scales = "fixed", ncol = 4) +  # Fix scales across facets
+  facet_wrap(~ Inc_month + Analyte, scales = "fixed", ncol = 4) +
   scale_fill_manual(values = c("sediment" = "#d95f02")) +  
   labs(
     x = "Site", 
-    y = expression(paste("Uptake Rate (µgN gAFDM"^-1, " hr"^-1, ")")),
+    y = expression(paste("Uptake Rate (?gN gAFDM"^-1, " hr"^-1, ")")),
     title = "Sediment Uptake Rates",
     fill = "Sample Type"
   ) +
-  ylim(y_min_sed, y_max_sed) +  # Set fixed y-axis limits
+  ylim(y_min_sed, y_max_sed) +
   theme_bw(base_size = 14) +  
   theme(
     panel.grid.major.x = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
     strip.text = element_text(size = 14, face = "bold"),
-    legend.position = "none"  # Hide legend since there's only one type
+    legend.position = "none"
   )
 
-# Print the plot
+# Plot
 print(sediment_boxplot)
 
-# ggsave("Manuscript_figures/sediment_boxplot.png",plot=sediment_boxplot, width = 10, height = 8, dpi = 300, units = "in")
+# ggsave("Manuscript_figures/boxplot_sed.png",plot=sediment_boxplot, width = 10, height = 8, dpi = 300, units = "in")
 
 
 
@@ -580,34 +688,38 @@ print(afdm_boxplot_bio)
 
 
 ## Uptake
-# Determine the global y-axis limits for biofilm
-y_min_bio <- min(dat_biofilm$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
-y_max_bio <- max(dat_biofilm$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
+# Filter biofilm data to only include spiked treatments
+dat_biofilm_spiked <- dat_biofilm %>%
+  filter(is_control != "control")  # or is_control == "spiked"
 
-# Create the boxplot for biofilm
-biofilm_boxplot <- ggplot(dat_biofilm, aes(x = factor(New_Site, levels = site_order), y = net_delta_Conc_ugNLhr_OM, fill = Type)) +
+# Determine the global y-axis limits for biofilm
+y_min_bio <- min(dat_biofilm_spiked$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
+y_max_bio <- max(dat_biofilm_spiked$net_delta_Conc_ugNLhr_OM, na.rm = TRUE)
+
+# boxplot for biofilm
+biofilm_boxplot <- ggplot(dat_biofilm_spiked, aes(x = factor(New_Site, levels = site_order), y = net_delta_Conc_ugNLhr_OM, fill = Type)) +
   geom_boxplot(outlier.shape = 21, outlier.fill = "white", outlier.size = 2, outlier.color = "black") +  
-  facet_wrap(~ Inc_month + Analyte, scales = "fixed", ncol = 4) +  # Fix scales across facets
+  facet_wrap(~ Inc_month + Analyte, scales = "fixed", ncol = 4) +
   scale_fill_manual(values = c("biofilm" = "#1b9e77")) +  
   labs(
     x = "Site", 
-    y = expression(paste("Uptake Rate (µgN gAFDM"^-1, " hr"^-1, ")")),
+    y = expression(paste("Uptake Rate (?gN gAFDM"^-1, " hr"^-1, ")")),
     title = "Biofilm Uptake Rates",
     fill = "Sample Type"
   ) +
-  ylim(y_min_bio, y_max_bio) +  # Set fixed y-axis limits
+  ylim(y_min_bio, y_max_bio) +
   theme_bw(base_size = 14) +  
   theme(
     panel.grid.major.x = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
     strip.text = element_text(size = 14, face = "bold"),
-    legend.position = "none"  # Hide legend since there's only one type
+    legend.position = "none"
   )
 
-# Print the plot
+# plot
 print(biofilm_boxplot)
 
-# ggsave("Manuscript_figures/biofilm_boxplot.png",plot=biofilm_boxplot, width = 10, height = 8, dpi = 300, units = "in")
+# ggsave("Manuscript_figures/boxplot_bio.png",plot=biofilm_boxplot, width = 10, height = 8, dpi = 300, units = "in")
 
 
 

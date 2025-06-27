@@ -18,16 +18,13 @@ library(readxl)
 library(dplyr)
 library(readxl)
 
-setwd("R:/Blaszczak_Lab/Ongoing Projects/Tahoe Data/Raw Data/N_inc/Raw")
+setwd("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tahoe/RProj Nearshore Greening/Step_1/")
 getwd()
 
 # This actually reads in with all incubation.
-May_inc <- read.csv("May_incubation/Raw/N_inc_May_20240220.csv") [, -c(32)]
-
-June_inc <- read.csv("June_incubation/Raw/N_inc_June_20240220.csv")
-
-# need to add weight in mg column
-July_inc <- read.csv("July_incubation/Raw/N_inc_July_20240220.csv")
+May_inc <- read.csv("N_inc_May_20240220.csv") [, -c(32)]
+June_inc <- read.csv("N_inc_June_20240220.csv")
+July_inc <- read.csv("N_inc_July_20240220.csv")
 
 colnames(May_inc)
 colnames(June_inc)
@@ -50,8 +47,8 @@ ammonium_df_sub <- merged_data %>%
   #filter(NH3_mgNL >= 0) %>% # Isolate just NH3, let's skip for now
   mutate(Shore = ifelse(grepl("^GB|^SH", Location), "E",
                         ifelse(grepl("^DI_blank", Location), "L",
-                        ifelse(grepl("^BW|^SS", Location), "W", 
-                               NA_character_))))
+                               ifelse(grepl("^BW|^SS", Location), "W", 
+                                      NA_character_))))
 
 str(ammonium_df_sub)
 
@@ -59,6 +56,13 @@ str(ammonium_df_sub)
 ammonium_df <-merge(x=ammonium_df_sub, y=df[,c("Shore","Inc_month","Temp_degC","pH")],
                     by = c("Shore","Inc_month"), all.x=TRUE)
 str(ammonium_df)
+
+# arrange and filter empty rows
+ammonium_df <- ammonium_df %>%
+  arrange(Inc_month, Vial_num) %>%
+  slice(71:n())
+
+
 
 
 ##### Assign variables #####
@@ -72,28 +76,31 @@ ammonium_df$pKa = 0.09018 + 2727.92/(ammonium_df$Temp_degC+273.15)
 #Calculate fraction of NH3
 ammonium_df$f = 1/(10^(ammonium_df$pKa-ammonium_df$pH)+1)
 #Calculate concentration of NH4
-ammonium_df$NH4mgL = (1 - ammonium_df$f) * ammonium_df$ammon_cal
+ammonium_df$NH4_mgNL <- (1 - ammonium_df$f) * ammonium_df$ammon_cal
 
 hist(ammonium_df$NH3_mgNL)
-hist(ammonium_df$NH4mgL)
+hist(ammonium_df$NH4_mgNL)
 
-Amoncheck <- ggplot(ammonium_df, aes(x = NH3_mgNL, y = NH4mgL, color=Location)) +
+Amoncheck <- ggplot(ammonium_df, aes(x = NH3_mgNL, y = NH4_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
-Amoncheck <- ggplot(ammonium_df, aes(x = NH3_mgNL, y = NH4mgL, color=Type)) +
+Amoncheck <- ggplot(ammonium_df, aes(x = NH3_mgNL, y = NH4_mgNL, color=Type)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
 Chemcheck <- ggplot(ammonium_df, aes(x = NO3_spike_µg_L, y = NO2_NO3_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
-Chemcheck2 <- ggplot(ammonium_df, aes(x = NH3_spike_µg_L, y = NH4mgL, color=Location)) +
+Chemcheck2 <- ggplot(ammonium_df, aes(x = NH3_spike_µg_L, y = NH4_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
 Chemcheck3 <- ggplot(ammonium_df, aes(x = NH3_spike_µg_L, y = NH3_mgNL, color=Location)) +
   geom_point() + theme_bw() + facet_grid(.~Inc_month)
 
 ##### Write data #####
-# setwd("R:/Blaszczak_Lab/Ongoing Projects/Tahoe Data/Raw Data/N_inc/Raw/Uptake_Calculations")
-# write.csv(ammonium_df, file = "NH4corrected_Ninc_data_20240220.csv", row.names = FALSE)
+# clean up df
+ammonium_save <- ammonium_df %>%
+  rename(OM_percent = OM_.) %>%
+  select(-ammon_cal, -pKa, -f, -NH3_mgNL)
+# write.csv(ammonium_save, file = "NH4corrected_Ninc_data_20240220.csv", row.names = FALSE)
 
 # ggsave("Amoncheck.png", plot = Amoncheck, width = 15, height = 5, units = "in")
