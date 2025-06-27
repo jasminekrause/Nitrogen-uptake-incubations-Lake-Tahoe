@@ -148,19 +148,19 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
            Type == type,
            Analyte == analyte)
   
-  # Debugging: Print the number of data points for the current combination
+  # Print the number of data points for the model
   print(paste("Number of data points:", nrow(specific_data)))
   
-  # Return NULL if no data points are available for the combination
+  # Return NULL otherwise
   if (nrow(specific_data) == 0) {
     print(paste("No data for:", site, inc_month, type, analyte))
     return(NULL)
   }
   
   # Identify unique spike concentrations for visualization
-  unique_spikes <- unique(specific_data$Spike_?g_L)
+  unique_spikes <- unique(specific_data$Spike_ug_L)
   
-  # Attempt to fit the Michaelis-Menten (MM) model
+  # Attempt to fit MM model
   tryCatch({
     # Fit the MM model
     mm_model <- drm(net_delta_Conc_ugNLhr_OM ~ Mean_Spike_Conc, 
@@ -199,8 +199,8 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
       geom_line(data = pred_data, aes(x = Mean_Spike_Conc, y = net_delta_Conc_ugNLhr_OM), colour = "red") +
       geom_vline(xintercept = unique_spikes, linetype = "dashed", color = "green", size = 1) +  # Add dashed lines for spike concentrations
       theme_minimal() +
-      xlab("Concentration [?g/L]") +
-      ylab("Uptake Rate [?gN/gAFDW-hr]") +
+      xlab("Concentration [ug/L]") +
+      ylab("Uptake Rate [ugN/gAFDW-hr]") +
       ggtitle(paste(site, inc_month, type, analyte, sep = " - ")) +
       annotate("text", x = Inf, y = Inf, 
                label = paste("Vmax:", round(Vmax, 3), "\nCI:", round(Vmax_CI[1], 3), "-", round(Vmax_CI[2], 3),
@@ -215,7 +215,7 @@ fit_and_plot_MM_model_annotate <- function(site, inc_month, type, analyte, data)
     return(list(model = mm_model, plot = plot))
     
   }, error = function(e) {
-    # Handle errors during model fitting
+    # Print errors
     print(paste("Error fitting model for:", site, inc_month, type, analyte, "Error message:", e$message))
     
     # Create a fallback plot with only the data points
@@ -242,7 +242,7 @@ for(i in 1:nrow(unique_combinations)) {
   result <- fit_and_plot_MM_model_annotate(comb$Site, comb$Inc_month, comb$Type, comb$Analyte, dat_filtered)
   
   if(!is.null(result)) {
-    # Save the model in the results list
+    # Save the model
     model_key <- paste(comb$Site, comb$Inc_month, comb$Type, comb$Analyte, sep = "_")
     model_results[[model_key]] <- result$model
     
@@ -372,7 +372,7 @@ fit_and_plot_linear_model_annotate <- function(site, inc_month, type, analyte, d
            Type == type,
            Analyte == analyte)
   
-  # Debugging: Print the number of data points for the current combination
+  # Print the number of data points for the model
   print(paste("Number of data points:", nrow(specific_data)))
   
   # Return NULL if no data points are available for the combination
@@ -723,4 +723,4 @@ print(biofilm_boxplot)
 
 
 
-## End of script
+#### End of script

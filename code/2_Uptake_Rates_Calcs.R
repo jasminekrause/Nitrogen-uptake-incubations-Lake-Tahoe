@@ -30,6 +30,7 @@ library(drc)
 library(patchwork)
 library(hms)
 
+#### 1. Calculate uptake ####
 # And creating function here to turn time-formatted hours into decimal hours.
 # https://stackoverflow.com/questions/21781311/how-to-convert-time-to-decimal
 decimateTime <- function(time) {
@@ -207,6 +208,7 @@ check_dat_tidy <- ggplot(dat_tidy, aes(x = real_icu_hrc,
 check_dat_tidy
 
 #ggsave("check_dat_tidy_plot.png", check_dat_tidy, width = 10, height = 6, dpi = 300)
+
 
 # Export for use in Michaelis-Menten calculation script.
 # saveRDS(dat_tidy, "N_Incubation_Uptake_Rates_20240924.rds")
