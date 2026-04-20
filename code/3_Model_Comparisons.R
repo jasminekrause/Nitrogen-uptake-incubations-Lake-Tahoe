@@ -1,8 +1,21 @@
-library('rstan')
+## Model comparison code for Lake Tahoe N uptake measurements
+## Comparison of mean, linear, and Michaelis-Menten models
+## for each location and date
+
+## Import packages
+lapply(c("plyr","dplyr","ggplot2","cowplot",
+         "lubridate","tidyverse"), require, character.only=T)
+library(rstan)
 library(bayesplot)
-library(ggplot2)
 library(loo)
-library(dplyr)
+
+## Import data
+
+
+
+
+
+
 
 
 log_lik<-function(data,pred,sigma,iter)
