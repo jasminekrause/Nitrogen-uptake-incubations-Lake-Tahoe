@@ -43,16 +43,38 @@ l <- split(df, df$Inc_ID)
 ggplot(l$BW0.5m_June_sediment_NH3, aes(Conc, Uptake))+
   geom_point(size=2)+theme_bw(base_size = 14)
 
+####################
+## Stan data prep ##
+####################
+rstan_options(auto_write=TRUE)
+## add line about cores
+
+colnames(l$BW0.5m_July_biofilm_NH3)
+
+stan_data_compile <- function(data){
+  mean_model_data <- list(N =length(data$Inc_ID), y = data$Uptake)
+  linear_model_data <- list(N =length(data$Inc_ID), y = data$Uptake, x = data$Conc)
+  MM_model_data <- list(N =length(data$Inc_ID), y = data$Uptake, x = data$Conc)
+  
+  list <- list("Mean_Model" = mean_model_data,
+               "Linear_Model" = linear_model_data,
+               "MM_Model" = MM_model_data)
+  return(list)
+}
+
+stan_data_l <- lapply(l, function(x) stan_data_compile(x))
+
+
+
+
 ####################################
 ## Model prep
 ####################################
 
 
-
-
-
-modeldata<-list("ndays"=ndays,
-                "nstrains"=nstrains,
+## Define data for each model type
+mean_modeldata<-list("N"=length(),
+                "y"=,
                 'nreps'=3, 'use'=use, "Yobs"=Ydata, 'smatch'=smatch, 'nrates'=length(unique(smatch)))
 
 
