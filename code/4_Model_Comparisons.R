@@ -5,7 +5,7 @@
 
 ## Import packages
 lapply(c("plyr","dplyr","ggplot2","cowplot",
-         "lubridate","tidyverse"), require, character.only=T)
+         "lubridate","tidyverse","shinystan"), require, character.only=T)
 library(rstan)
 library(bayesplot)
 library(loo)
@@ -73,18 +73,18 @@ stan_data_l <- lapply(l, function(x) stan_data_compile(x))
 #Mean Model
 test_mean <- stan("Mean_Model_Nuptake.stan",
                 data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
-                chains=3,iter=3000, control=list(max_treedepth=12))
+                chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_mean)
 #Linear Model
-test_linear <- stan("Mean_Model_Nuptake.stan",
-                  data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
-                  chains=3,iter=3000, control=list(max_treedepth=12))
-launch_shinystan(test_mean)
+test_linear <- stan("Linear_Model_Nuptake.stan",
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$Linear_Model,
+                  chains=3,iter=2000, control=list(max_treedepth=12))
+launch_shinystan(test_linear)
 #MM Model
-test_mean <- stan("Mean_Model_Nuptake.stan",
-                  data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
-                  chains=3,iter=3000, control=list(max_treedepth=12))
-launch_shinystan(test_mean)
+test_MM <- stan("MM_Model_Nuptake.stan",
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$MM_Model,
+                  chains=3,iter=2000, control=list(max_treedepth=12))
+launch_shinystan(test_MM)
 
 
 

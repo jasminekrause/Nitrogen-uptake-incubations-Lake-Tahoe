@@ -28,7 +28,7 @@ parameters {
 // 'y' to be normally distributed with mean 'mu'
 // and standard deviation 'sigma'.
 model {
-  y ~ normal(b0+b1*x, sigma);
+  y ~ normal(b0+(b1*x), sigma);
 }
 
 generated quantities{

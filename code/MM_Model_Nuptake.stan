@@ -28,13 +28,13 @@ parameters {
 // 'y' to be normally distributed with mean 'mu'
 // and standard deviation 'sigma'.
 model {
-  y ~ normal(Vmax*(x/(K+x)), sigma);
+  y ~ normal((Vmax*x) ./ (K+x), sigma);
 }
 
 generated quantities{
 vector[N] ymu;
 
-ymu=Vmax*(x/(K+x));
+ymu=(Vmax*x) ./ (K+x);
 
 }
 
