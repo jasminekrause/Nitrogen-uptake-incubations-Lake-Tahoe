@@ -111,8 +111,40 @@ dat_filtered <- dat_filtered %>%
   mutate(Site = gsub("_", "", Site))
 
 #####################################################################
-## Create lists of site-date data frames
+## Create lists of site-month-type-analyte data frames
 #####################################################################
+head(dat_filtered)
+# Define unique combinations from the dataset
+unique_combinations <- unique(dat_filtered[, c("Site", "Inc_month", "Type", "Analyte")])
+unique_combinations <- data.frame(lapply(unique_combinations, as.character), stringsAsFactors = FALSE)
+print(head(unique_combinations))
+
+# Create a unique ID row
+dat_filtered$Inc_ID <- paste(dat_filtered$Site,"_",
+                             dat_filtered$Inc_month,"_",
+                             dat_filtered$Type,"_",
+                             dat_filtered$Analyte, sep = "")
+
+# Subset to columns for model
+df <- dat_filtered[, c("Inc_ID",
+                       "Mean_Spike_Conc",
+                       "net_delta_Conc_ugNLhr_OM")]
+
+# Create a list
+l <- split(df, df$Inc_ID)
+
+####################################
+## Model prep
+####################################
+
+modeldata<-list("ndays"=ndays,
+                "nstrains"=nstrains,
+                'nreps'=3, 'use'=use, "Yobs"=Ydata, 'smatch'=smatch, 'nrates'=length(unique(smatch)))
+
+
+
+
+
 
 
 
