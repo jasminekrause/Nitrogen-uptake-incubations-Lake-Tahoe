@@ -47,7 +47,7 @@ ggplot(l$BW0.5m_June_sediment_NH3, aes(Conc, Uptake))+
 ## Stan data prep ##
 ####################
 rstan_options(auto_write=TRUE)
-## add line about cores
+options(mc.cores = parallel::detectCores())
 
 colnames(l$BW0.5m_July_biofilm_NH3)
 
@@ -65,20 +65,34 @@ stan_data_compile <- function(data){
 stan_data_l <- lapply(l, function(x) stan_data_compile(x))
 
 
+###########################
+## Fit each model
+###########################
+
+## Initial tests
+#Mean Model
+test_mean <- stan("Mean_Model_Nuptake.stan",
+                data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
+                chains=3,iter=3000, control=list(max_treedepth=12))
+launch_shinystan(test_mean)
+#Linear Model
+test_linear <- stan("Mean_Model_Nuptake.stan",
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
+                  chains=3,iter=3000, control=list(max_treedepth=12))
+launch_shinystan(test_mean)
+#MM Model
+test_mean <- stan("Mean_Model_Nuptake.stan",
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
+                  chains=3,iter=3000, control=list(max_treedepth=12))
+launch_shinystan(test_mean)
 
 
-####################################
-## Model prep
-####################################
 
-
-## Define data for each model type
-mean_modeldata<-list("N"=length(),
-                "y"=,
-                'nreps'=3, 'use'=use, "Yobs"=Ydata, 'smatch'=smatch, 'nrates'=length(unique(smatch)))
-
-
-
+fit1<-stan(file='GrowthCurves_WAIC.stan',data=modeldata, chains=3,iter=2000, control = list(adapt_delta = 0.9999, max_treedepth =12))
+launch_shinystan(fit1)
+parsout1<-extract(fit1,pars=c('ymu','sigma'))
+fit1ll<-log_lik(Y,parsout1$ymu,parsout1$sigma,iter=2000)
+loo::waic.matrix(fit1ll)
 
 
 
