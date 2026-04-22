@@ -17,10 +17,6 @@ dat_filtered <- read.csv("../data/Filtered_NUptake_2026_04_20.csv")
 ## Create lists of site-month-type-analyte data frames
 #####################################################################
 head(dat_filtered)
-# Define unique combinations from the dataset
-unique_combinations <- unique(dat_filtered[, c("Site", "Inc_month", "Type", "Analyte")])
-unique_combinations <- data.frame(lapply(unique_combinations, as.character), stringsAsFactors = FALSE)
-print(head(unique_combinations))
 
 # Create a unique ID row
 dat_filtered$Inc_ID <- paste(dat_filtered$Site,"_",
@@ -64,7 +60,6 @@ stan_data_compile <- function(data){
 
 stan_data_l <- lapply(l, function(x) stan_data_compile(x))
 
-
 ###########################
 ## Fit each model
 ###########################
@@ -87,19 +82,18 @@ test_MM <- stan("MM_Model_Nuptake.stan",
 launch_shinystan(test_MM)
 
 
+## Extract parameters from tests
+parsout_mean<-extract(test_mean,pars=c('mu','sigma'))
+parsout_linear<-extract(test_mean,pars=c('mu','sigma'))
+parsout_MM<-extract(test_mean,pars=c('mu','sigma'))
 
-fit1<-stan(file='GrowthCurves_WAIC.stan',data=modeldata, chains=3,iter=2000, control = list(adapt_delta = 0.9999, max_treedepth =12))
-launch_shinystan(fit1)
-parsout1<-extract(fit1,pars=c('ymu','sigma'))
-fit1ll<-log_lik(Y,parsout1$ymu,parsout1$sigma,iter=2000)
-loo::waic.matrix(fit1ll)
 
 
 
 
 
 #######################
-## Log-likelihood
+## Log-likelihood functions
 #######################
 
 
