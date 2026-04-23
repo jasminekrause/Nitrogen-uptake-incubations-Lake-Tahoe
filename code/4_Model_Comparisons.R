@@ -137,12 +137,17 @@ all_models_pars_fit <- lapply(stan_data_l, function(x) three_model_fit(x))
 # Save output locally (but in folder under gitignore)
 saveRDS(all_models_pars_fit, "../rds files/parsout_3models_allsites.rds")
 
-
-
-
 ##############################################
 ## Log-likelihood function
 ##############################################
+
+## First merge lists by Inc_ID
+ #merge
+
+keys <- unique(c(names(stan_data_l), names(all_models_pars_fit)))
+all_merged <- setNames(mapply(c, stan_data_l[keys], all_models_pars_fit[keys]), keys)
+
+## Log likelihood function
 
 log_lik_fn<-function(data,pred,sigma,iter) {
   
@@ -150,15 +155,12 @@ log_lik_fn<-function(data,pred,sigma,iter) {
   
   for(i in 1:iter){
     log_lik_out[i,]<-dnorm(data,pred[i,],sigma[i],log=T)
-    
   }
   
   return(log_lik_out)
 }
 
 
-## First merge lists by Inc_ID
-all_merged #merge
 
 ## Set up function to run log likelihood function
 ll_mods <- function(all_list){
@@ -186,10 +188,10 @@ ll_mods <- function(all_list){
   
 }
 
+ll_ouput <- lapply(all_merged[1], function(x) ll_mods(x))
 
 
-
-
+waic.matrix(ll_output$ll_mean)
 
 
 
