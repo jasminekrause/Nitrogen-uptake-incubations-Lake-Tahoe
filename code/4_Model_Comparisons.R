@@ -60,9 +60,9 @@ stan_data_compile <- function(data){
 
 stan_data_l <- lapply(l, function(x) stan_data_compile(x))
 
-###########################
-## Fit each model
-###########################
+#######################################
+## Initial tests to fit each model
+#######################################
 
 ## Initial tests
 #Mean Model
@@ -70,22 +70,70 @@ test_mean <- stan("Mean_Model_Nuptake.stan",
                 data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
                 chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_mean)
+
 #Linear Model
 test_linear <- stan("Linear_Model_Nuptake.stan",
                   data=stan_data_l$BW0.5m_June_sediment_NH3$Linear_Model,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_linear)
+
 #MM Model
 test_MM <- stan("MM_Model_Nuptake.stan",
                   data=stan_data_l$BW0.5m_June_sediment_NH3$MM_Model,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_MM)
 
-
 ## Extract parameters from tests
 parsout_mean<-extract(test_mean,pars=c('mu','sigma'))
-parsout_linear<-extract(test_mean,pars=c('mu','sigma'))
-parsout_MM<-extract(test_mean,pars=c('mu','sigma'))
+parsout_linear<-extract(test_linear,pars=c('b0','b1','sigma'))
+parsout_MM<-extract(test_MM,pars=c('Vmax','K','sigma','ymu'))
+
+
+#######################################
+## Fit each model to each incubation
+#######################################
+
+three_model_fit <- function(x){
+  
+  dat_mean <- x$Mean_Model
+  dat_linear <- x$Linear_Model
+  dat_MM <- x$MM_Model
+  
+  #Mean Model
+  fit_mean <- stan("Mean_Model_Nuptake.stan",
+                   data=dat_mean,
+                   chains=3,iter=3000,
+                   control=list(max_treedepth=12))
+  
+  #Linear Model
+  fit_linear <- stan("Linear_Model_Nuptake.stan",
+                     data=dat_linear,
+                     chains=3,iter=3000,
+                     control=list(max_treedepth=12))
+  
+  #MM Model
+  fit_MM <- stan("MM_Model_Nuptake.stan",
+                 data=dat_MM,
+                 chains=3,iter=3000,
+                 control=list(max_treedepth=12))
+  
+  ## Extract parameters from tests
+  parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
+  parsout_linear<-extract(fit_linear,pars=c('b0','b1','sigma','ymu'))
+  parsout_MM<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
+  
+  
+  
+  parsout_list <- list("Pars_Mean" = parsout_mean,
+                   "Pars_Linear" = parsout_linear,
+                   "Pars_MM" = parsout_MM)
+  
+  return(parsout_list)
+  
+}
+
+
+all_models_pars_fit <- lapply(stan_data_l[1], function(x) three_model_fit(x))
 
 
 
