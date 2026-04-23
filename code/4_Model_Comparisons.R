@@ -133,7 +133,7 @@ three_model_fit <- function(x){
 }
 
 
-all_models_pars_fit <- lapply(stan_data_l[1], function(x) three_model_fit(x))
+all_models_pars_fit <- lapply(stan_data_l, function(x) three_model_fit(x))
 
 
 
