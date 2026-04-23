@@ -134,29 +134,68 @@ three_model_fit <- function(x){
 
 
 all_models_pars_fit <- lapply(stan_data_l, function(x) three_model_fit(x))
+# Save output locally (but in folder under gitignore)
+saveRDS(all_models_pars_fit, "../rds files/parsout_3models_allsites.rds")
 
 
 
 
+##############################################
+## Log-likelihood function
+##############################################
 
-
-#######################
-## Log-likelihood functions
-#######################
-
-
-log_lik<-function(data,pred,sigma,iter)
-{
+log_lik_fn<-function(data,pred,sigma,iter) {
+  
   log_lik_out<-matrix("NA",iter,length(data))
-
+  
   for(i in 1:iter){
     log_lik_out[i,]<-dnorm(data,pred[i,],sigma[i],log=T)
     
-      }
-   
+  }
   
   return(log_lik_out)
 }
+
+
+## First merge lists by Inc_ID
+all_merged #merge
+
+## Set up function to run log likelihood function
+ll_mods <- function(all_list){
+  
+  ## Reestablish separate Stan formatted datasets
+  mean_dat <- all_list$x$Mean_Model
+  linear_dat <- all_list$x$Linear_Model
+  MM_dat <- all_list$x$MM_Model
+  
+  ## Reestablish separate pars out datasets
+  pars_mean <- all_list$x$Pars_Mean
+  pars_linear <- all_list$x$Pars_Linear
+  pars_MM <- all_list$x$Pars_MM
+  
+  ## Run Log likelihood function (data,pred,sigma,iter)
+  
+  ll_mean <- log_lik_fn(mean_dat, pars_mean$mu, pars_mean$sigma, 4500)
+  ll_linear <- log_lik_fn(linear_dat, pars_linear$ymu, pars_linear$sigma, 4500)
+  ll_MM <- log_lik_fn(MM_dat, pars_<MM$mu, pars_MM$sigma, 4500)
+  
+  ll_list <- list(ll_mean, ll_linear, ll_MM)
+  
+  return(ll_list)
+  
+  
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 gdata<-read.csv("avg_biovolume_data.csv", header=T)
