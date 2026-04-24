@@ -1,7 +1,7 @@
 ## Model comparison code for Lake Tahoe N uptake measurements
 ## Comparison of mean, linear, and Michaelis-Menten models
 ## for each location and date
-# JAK and JRB
+# JRB
 
 ## Import packages
 lapply(c("plyr","dplyr","ggplot2","cowplot",
@@ -9,6 +9,7 @@ lapply(c("plyr","dplyr","ggplot2","cowplot",
 library(rstan)
 library(bayesplot)
 library(loo)
+library(posterior)
 
 ## Import data
 dat_filtered <- read.csv("../data/Filtered_NUptake_2026_04_20.csv")
@@ -70,18 +71,22 @@ test_mean <- stan("Mean_Model_Nuptake.stan",
                 data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
                 chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_mean)
+summarize_draws(as_draws_df(test_mean))
 
 #Linear Model
 test_linear <- stan("Linear_Model_Nuptake.stan",
                   data=stan_data_l$BW0.5m_June_sediment_NH3$Linear_Model,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_linear)
+summarize_draws(as_draws_df(test_linear))
 
 #MM Model
 test_MM <- stan("MM_Model_Nuptake.stan",
                   data=stan_data_l$BW0.5m_June_sediment_NH3$MM_Model,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_MM)
+summarize_draws(as_draws_df(test_MM))
+
 
 ## Extract parameters from tests
 parsout_mean<-extract(test_mean,pars=c('mu','sigma'))
@@ -117,35 +122,52 @@ three_model_fit <- function(x){
                  chains=3,iter=3000,
                  control=list(max_treedepth=12))
   
-  ## Extract parameters from tests
+  ## Extract parameters
   parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
   parsout_linear<-extract(fit_linear,pars=c('b0','b1','sigma','ymu'))
   parsout_MM<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
   
-  
+  ## Extract model fit diagnostics and compile
+  diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:3,]
+  diag_linear <- summarize_draws(as_draws_df(fit_linear))[1:3,]
+  diag_MM <- summarize_draws(as_draws_df(fit_MM))[1:3,]
+  diag_mean$model <- "mean"
+  diag_linear$model <- "linear"
+  diag_MM$model <- "MM"
+  diagnostics <- rbind(diag_mean, diag_linear, diag_MM)
   
   parsout_list <- list("Pars_Mean" = parsout_mean,
                    "Pars_Linear" = parsout_linear,
-                   "Pars_MM" = parsout_MM)
+                   "Pars_MM" = parsout_MM,
+                   "Diagnostics" = diagnostics)
   
   return(parsout_list)
   
 }
 
-
-all_models_pars_fit <- lapply(stan_data_l, function(x) three_model_fit(x))
+all_modelfits_pars_diag <- lapply(stan_data_l, function(x) three_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_models_pars_fit, "../rds files/parsout_3models_allsites.rds")
+saveRDS(all_models_pars_fit, "../rds files/parsout_diag_3models_allsites.rds")
 
 ##############################################
 ## Log-likelihood function
 ##############################################
 
 ## First merge lists by Inc_ID
- #merge
+combined <- c(stan_data_l, all_models_pars_fit)
+merged_list <- tapply(combined, names(combined), function(x) unlist(x, recursive = FALSE))
 
-keys <- unique(c(names(stan_data_l), names(all_models_pars_fit)))
-all_merged <- setNames(mapply(c, stan_data_l[keys], all_models_pars_fit[keys]), keys)
+listnames <- c("Mean_Model_Data","Linear_Model_Data","MM_Model_Data",
+               "Pars_Mean","Pars_Linear","Pars_MM")
+
+renaming <- function(x) {
+  names(x) <- listnames
+  return(x)
+}
+
+merged_list <- lapply(merged_list, function(y) renaming(y))
+
+
 
 ## Log likelihood function
 
