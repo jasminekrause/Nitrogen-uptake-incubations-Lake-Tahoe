@@ -107,19 +107,19 @@ three_model_fit <- function(x){
   #Mean Model
   fit_mean <- stan("Mean_Model_Nuptake.stan",
                    data=dat_mean,
-                   chains=3,iter=3000,
+                   chains=4,iter=10000,
                    control=list(max_treedepth=12))
   
   #Linear Model
   fit_linear <- stan("Linear_Model_Nuptake.stan",
                      data=dat_linear,
-                     chains=3,iter=3000,
+                     chains=4,iter=10000,
                      control=list(max_treedepth=12))
   
   #MM Model
   fit_MM <- stan("MM_Model_Nuptake.stan",
                  data=dat_MM,
-                 chains=3,iter=3000,
+                 chains=4,iter=10000,
                  control=list(max_treedepth=12))
   
   ## Extract parameters
@@ -147,7 +147,7 @@ three_model_fit <- function(x){
 
 all_modelfits_pars_diag <- lapply(stan_data_l, function(x) three_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_modelfits_pars_diag, "../rds files/parsout_diag_3models_allsites.rds")
+saveRDS(all_modelfits_pars_diag, "../rds files/3models_iter10k_chains4.rds")
 
 ##############################################
 ## Extract and combine model diagnostics
@@ -161,7 +161,7 @@ extract_diag <- function(y){
 allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extract_diag(x)), data.frame)
 
 ## Save
-write.csv(allpars_allmodels_diag, "../data/allpars_allmodels_diag_2026_04_24.csv")
+write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter10k_chains4.csv")
 
 ## Explore
 a <- allpars_allmodels_diag
@@ -207,10 +207,10 @@ log_lik_fn<-function(data,pred,sigma,iter) {
 }
 
 
-## Initial test
+## Initial test - figure out how to run comparison
 test <- merged_list[1]
-log_lik_fn(test$BW0.5m_July_biofilm_NH3$Mean_Model_Data$y,
-           test$BW0.5m_July_biofilm_NH3$Pars_Mean$mu,
+log_lik_fn(test$BW0.5m_July_biofilm_NH3$Linear_Model_Data$y,
+           test$BW0.5m_July_biofilm_NH3$Pars_Linear$ymu,
            test$BW0.5m_July_biofilm_NH3$Pars_Mean$sigma, 4500)
 
 
