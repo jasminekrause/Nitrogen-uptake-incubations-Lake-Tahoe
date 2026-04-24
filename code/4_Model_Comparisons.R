@@ -147,18 +147,44 @@ three_model_fit <- function(x){
 
 all_modelfits_pars_diag <- lapply(stan_data_l, function(x) three_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_models_pars_fit, "../rds files/parsout_diag_3models_allsites.rds")
+saveRDS(all_modelfits_pars_diag, "../rds files/parsout_diag_3models_allsites.rds")
+
+##############################################
+## Extract and combine model diagnostics
+##############################################
+extract_diag <- function(y){
+  df <- y$Diagnostics
+  return(df)
+}
+
+## Extract
+allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extract_diag(x)), data.frame)
+
+## Save
+write.csv(allpars_allmodels_diag, "../data/allpars_allmodels_diag_2026_04_24.csv")
+
+## Explore
+a <- allpars_allmodels_diag
+View(a[which(a$variable == "Vmax" & a$rhat < 1.1),]) ## MM - Very few (9/60) Rhat < 1.1
+View(a[which(a$variable == "K" & a$rhat < 1.1),]) ## MM - Very few Rhat < 1.1
+View(a[which(a$variable == "b0" & a$rhat < 1.1),]) ## Linear - All Rhat < 1.1
+View(a[which(a$variable == "b1" & a$rhat < 1.1),]) ## Linear - All Rhat < 1.1
+View(a[which(a$variable == "mu" & a$rhat < 1.1),]) ## Mean - All Rhat < 1.1
+
+# Visualize
+ggplot(l$SS3m_May_sediment_NH3, aes(Conc, Uptake))+
+  geom_point(size=2)+theme_bw(base_size = 14)
 
 ##############################################
 ## Log-likelihood function
 ##############################################
 
 ## First merge lists by Inc_ID
-combined <- c(stan_data_l, all_models_pars_fit)
+combined <- c(stan_data_l, all_modelfits_pars_diag)
 merged_list <- tapply(combined, names(combined), function(x) unlist(x, recursive = FALSE))
 
 listnames <- c("Mean_Model_Data","Linear_Model_Data","MM_Model_Data",
-               "Pars_Mean","Pars_Linear","Pars_MM")
+               "Pars_Mean","Pars_Linear","Pars_MM", "Diagnostics")
 
 renaming <- function(x) {
   names(x) <- listnames
@@ -168,19 +194,27 @@ renaming <- function(x) {
 merged_list <- lapply(merged_list, function(y) renaming(y))
 
 
-
 ## Log likelihood function
-
 log_lik_fn<-function(data,pred,sigma,iter) {
   
   log_lik_out<-matrix("NA",iter,length(data))
   
   for(i in 1:iter){
-    log_lik_out[i,]<-dnorm(data,pred[i,],sigma[i],log=T)
+    log_lik_out[i,]<-dnorm(data, pred[i,], sigma[i], log=T)
   }
   
   return(log_lik_out)
 }
+
+
+## Initial test
+test <- merged_list[1]
+log_lik_fn(test$BW0.5m_July_biofilm_NH3$Mean_Model_Data$y,
+           test$BW0.5m_July_biofilm_NH3$Pars_Mean$mu,
+           test$BW0.5m_July_biofilm_NH3$Pars_Mean$sigma, 4500)
+
+
+
 
 
 
@@ -188,9 +222,9 @@ log_lik_fn<-function(data,pred,sigma,iter) {
 ll_mods <- function(all_list){
   
   ## Reestablish separate Stan formatted datasets
-  mean_dat <- all_list$x$Mean_Model
-  linear_dat <- all_list$x$Linear_Model
-  MM_dat <- all_list$x$MM_Model
+  mean_dat <- all_list$x$Mean_Model_Data
+  linear_dat <- all_list$x$Linear_Model_Data
+  MM_dat <- all_list$x$MM_Model_Data
   
   ## Reestablish separate pars out datasets
   pars_mean <- all_list$x$Pars_Mean
@@ -210,7 +244,7 @@ ll_mods <- function(all_list){
   
 }
 
-ll_ouput <- lapply(all_merged[1], function(x) ll_mods(x))
+ll_ouput <- lapply(merged_list[1], function(x) ll_mods(x))
 
 
 waic.matrix(ll_output$ll_mean)
