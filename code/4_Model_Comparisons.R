@@ -50,12 +50,10 @@ colnames(l$BW0.5m_July_biofilm_NH3)
 
 stan_data_compile <- function(data){
   mean_model_data <- list(N =length(data$Inc_ID), y = data$Uptake)
-  linear_model_data <- list(N =length(data$Inc_ID), y = data$Uptake, x = data$Conc)
-  MM_model_data <- list(N =length(data$Inc_ID), y = data$Uptake, x = data$Conc)
+  model_data <- list(N =length(data$Inc_ID), y = data$Uptake, x = data$Conc)
   
-  list <- list("Mean_Model" = mean_model_data,
-               "Linear_Model" = linear_model_data,
-               "MM_Model" = MM_model_data)
+  list <- list("Mean_Model_Data" = mean_model_data,
+               "Model_Data" = model_data)
   return(list)
 }
 
@@ -68,21 +66,29 @@ stan_data_l <- lapply(l, function(x) stan_data_compile(x))
 ## Initial tests
 #Mean Model
 test_mean <- stan("Mean_Model_Nuptake.stan",
-                data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model,
+                data=stan_data_l$BW0.5m_June_sediment_NH3$Mean_Model_Data,
                 chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_mean)
 summarize_draws(as_draws_df(test_mean))
 
 #Linear Model
 test_linear <- stan("Linear_Model_Nuptake.stan",
-                  data=stan_data_l$BW0.5m_June_sediment_NH3$Linear_Model,
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_linear)
 summarize_draws(as_draws_df(test_linear))
 
+#Hill Model
+test_Hill <- stan("Hill_Model_Nuptake.stan",
+                data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
+                chains=3,iter=2000, control=list(max_treedepth=12))
+launch_shinystan(test_Hill)
+summarize_draws(as_draws_df(test_Hill))
+
+
 #MM Model
 test_MM <- stan("MM_Model_Nuptake.stan",
-                  data=stan_data_l$BW0.5m_June_sediment_NH3$MM_Model,
+                  data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
                   chains=3,iter=2000, control=list(max_treedepth=12))
 launch_shinystan(test_MM)
 summarize_draws(as_draws_df(test_MM))
@@ -98,11 +104,10 @@ parsout_MM<-extract(test_MM,pars=c('Vmax','K','sigma','ymu'))
 ## Fit each model to each incubation
 #######################################
 
-three_model_fit <- function(x){
+all_model_fit <- function(x){
   
-  dat_mean <- x$Mean_Model
-  dat_linear <- x$Linear_Model
-  dat_MM <- x$MM_Model
+  dat_mean <- x$Mean_Model_data
+  dat <- x$Model_Data
   
   #Mean Model
   fit_mean <- stan("Mean_Model_Nuptake.stan",
@@ -112,42 +117,66 @@ three_model_fit <- function(x){
   
   #Linear Model
   fit_linear <- stan("Linear_Model_Nuptake.stan",
-                     data=dat_linear,
+                     data=dat,
                      chains=4,iter=5000,
                      control=list(max_treedepth=12))
   
   #MM Model
   fit_MM <- stan("MM_Model_Nuptake.stan",
-                 data=dat_MM,
+                 data=dat,
                  chains=4,iter=5000,
                  control=list(max_treedepth=12))
+  
+  #Hill Model
+  fit_Hill <- stan("Hill_Model_Nuptake.stan",
+                 data=dat,
+                 chains=4,iter=5000,
+                 control=list(max_treedepth=12))
+  
+  #1stOrder Model
+  fit_1stOrder <- stan("1stOrder_Model_Nuptake.stan",
+                   data=dat,
+                   chains=4,iter=5000,
+                   control=list(max_treedepth=12))
+  
   
   ## Extract parameters
   parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
   parsout_linear<-extract(fit_linear,pars=c('b0','b1','sigma','ymu'))
   parsout_MM<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
+  parsout_Hill<-extract(fit_MM,pars=c('Vmax','K','n','sigma','ymu'))
+  parsout_1stOrder<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
   
   ## Extract model fit diagnostics and compile
   diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:3,]
   diag_linear <- summarize_draws(as_draws_df(fit_linear))[1:3,]
   diag_MM <- summarize_draws(as_draws_df(fit_MM))[1:3,]
+  diag_Hill <- summarize_draws(as_draws_df(fit_Hill))[1:4,]
+  diag_1stOrder <- summarize_draws(as_draws_df(fit_1stOrder))[1:3,]
+  
   diag_mean$model <- "mean"
   diag_linear$model <- "linear"
   diag_MM$model <- "MM"
-  diagnostics <- rbind(diag_mean, diag_linear, diag_MM)
+  diag_Hill$model <- "Hill"
+  diag_1stOrder$model <- "1stOrder"
+  diagnostics <- rbind(diag_mean, diag_linear, diag_MM, diag_Hill, diag_1stOrder)
   
   parsout_list <- list("Pars_Mean" = parsout_mean,
                    "Pars_Linear" = parsout_linear,
                    "Pars_MM" = parsout_MM,
+                   "Pars_Hill" = parsout_Hill,
+                   "Pars_1stOrder" = parsout_1stOrder,
                    "Diagnostics" = diagnostics)
   
   return(parsout_list)
   
 }
 
-all_modelfits_pars_diag <- lapply(stan_data_l, function(x) three_model_fit(x))
+all_modelfits_pars_diag <- lapply(stan_data_l[1], function(x) all_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_modelfits_pars_diag, "../rds files/3models_iter5k_chains4.rds")
+saveRDS(all_modelfits_pars_diag, "../rds files/modelfits_iter5k_chains4.rds")
+
+all_modelfits_pars_diag <- readRDS("../rds files/parsout_diag_3models_allsites.rds")
 
 ##############################################
 ## Extract and combine model diagnostics
@@ -183,7 +212,7 @@ ggplot(l$SS3m_May_sediment_NH3, aes(Conc, Uptake))+
 combined <- c(stan_data_l, all_modelfits_pars_diag)
 merged_list <- tapply(combined, names(combined), function(x) unlist(x, recursive = FALSE))
 
-listnames <- c("Mean_Model_Data","Linear_Model_Data","MM_Model_Data",
+listnames <- c("Mean_Model_Data","Model_Data",
                "Pars_Mean","Pars_Linear","Pars_MM", "Diagnostics")
 
 renaming <- function(x) {
@@ -209,11 +238,11 @@ log_lik_fn<-function(data,pred,sigma,iter) {
 
 ## Initial test - figure out how to run comparison
 test <- merged_list[1]
-log_lik_fn(test$BW0.5m_July_biofilm_NH3$Linear_Model_Data$y,
+ll_test <- apply(log_lik_fn(test$BW0.5m_July_biofilm_NH3$Model_Data$y,
            test$BW0.5m_July_biofilm_NH3$Pars_Linear$ymu,
-           test$BW0.5m_July_biofilm_NH3$Pars_Mean$sigma, 4500)
+           test$BW0.5m_July_biofilm_NH3$Pars_Mean$sigma, 4500), 2, as.numeric)
 
-
+ll_waic <- loo::waic.matrix(ll_test) #lower the value the better
 
 
 
