@@ -86,18 +86,12 @@ launch_shinystan(test_Hill)
 summarize_draws(as_draws_df(test_Hill))
 
 
-#MM Model
-test_MM <- stan("MM_Model_Nuptake.stan",
+#1stOrder Model
+test_1stOrder <- stan("1stOrder_Model_Nuptake.stan",
                   data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
                   chains=3,iter=2000, control=list(max_treedepth=12))
-launch_shinystan(test_MM)
-summarize_draws(as_draws_df(test_MM))
-
-
-## Extract parameters from tests
-parsout_mean<-extract(test_mean,pars=c('mu','sigma'))
-parsout_linear<-extract(test_linear,pars=c('b0','b1','sigma'))
-parsout_MM<-extract(test_MM,pars=c('Vmax','K','sigma','ymu'))
+launch_shinystan(test_1stOrder)
+summarize_draws(as_draws_df(test_1stOrder))
 
 
 #######################################
