@@ -1,5 +1,6 @@
+# Git ignore
 .Rproj.user
-.Rhistory
+*code/.Rhistory
 .RData
 .Ruserdata
 
