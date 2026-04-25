@@ -107,19 +107,19 @@ three_model_fit <- function(x){
   #Mean Model
   fit_mean <- stan("Mean_Model_Nuptake.stan",
                    data=dat_mean,
-                   chains=4,iter=10000,
+                   chains=4,iter=5000,
                    control=list(max_treedepth=12))
   
   #Linear Model
   fit_linear <- stan("Linear_Model_Nuptake.stan",
                      data=dat_linear,
-                     chains=4,iter=10000,
+                     chains=4,iter=5000,
                      control=list(max_treedepth=12))
   
   #MM Model
   fit_MM <- stan("MM_Model_Nuptake.stan",
                  data=dat_MM,
-                 chains=4,iter=10000,
+                 chains=4,iter=5000,
                  control=list(max_treedepth=12))
   
   ## Extract parameters
@@ -147,7 +147,7 @@ three_model_fit <- function(x){
 
 all_modelfits_pars_diag <- lapply(stan_data_l, function(x) three_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_modelfits_pars_diag, "../rds files/3models_iter10k_chains4.rds")
+saveRDS(all_modelfits_pars_diag, "../rds files/3models_iter5k_chains4.rds")
 
 ##############################################
 ## Extract and combine model diagnostics
@@ -161,7 +161,7 @@ extract_diag <- function(y){
 allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extract_diag(x)), data.frame)
 
 ## Save
-write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter10k_chains4.csv")
+write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4.csv")
 
 ## Explore
 a <- allpars_allmodels_diag
