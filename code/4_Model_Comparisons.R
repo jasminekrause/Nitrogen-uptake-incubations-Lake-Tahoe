@@ -37,8 +37,9 @@ colnames(df) <- c("Inc_ID","Conc","Uptake")
 l <- split(df, df$Inc_ID)
 
 # Visualize
-ggplot(l$BW0.5m_June_sediment_NH3, aes(Conc, Uptake))+
-  geom_point(size=2)+theme_bw(base_size = 14)
+lapply(l[50:60], function(x) ggplot(x, aes(Conc, Uptake))+
+         geom_point(size=2)+theme_bw(base_size = 14)+
+         labs(title = x$Inc_ID[1]))
 
 ####################
 ## Stan data prep ##
@@ -100,7 +101,7 @@ summarize_draws(as_draws_df(test_1stOrder))
 
 all_model_fit <- function(x){
   
-  dat_mean <- x$Mean_Model_data
+  dat_mean <- x$Mean_Model_Data
   dat <- x$Model_Data
   
   #Mean Model
@@ -138,8 +139,8 @@ all_model_fit <- function(x){
   parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
   parsout_linear<-extract(fit_linear,pars=c('b0','b1','sigma','ymu'))
   parsout_MM<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
-  parsout_Hill<-extract(fit_MM,pars=c('Vmax','K','n','sigma','ymu'))
-  parsout_1stOrder<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
+  parsout_Hill<-extract(fit_Hill,pars=c('Vmax','K','n','sigma','ymu'))
+  parsout_1stOrder<-extract(fit_1stOrder,pars=c('Vmax','K','sigma','ymu'))
   
   ## Extract model fit diagnostics and compile
   diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:3,]
@@ -166,11 +167,11 @@ all_model_fit <- function(x){
   
 }
 
-all_modelfits_pars_diag <- lapply(stan_data_l[1], function(x) all_model_fit(x))
+all_modelfits_pars_diag <- lapply(stan_data_l, function(x) all_model_fit(x))
 # Save output locally (but in folder under gitignore)
 saveRDS(all_modelfits_pars_diag, "../rds files/modelfits_iter5k_chains4.rds")
 
-all_modelfits_pars_diag <- readRDS("../rds files/parsout_diag_3models_allsites.rds")
+#all_modelfits_pars_diag <- readRDS("../rds files/modelfits_iter5k_chains4.rds")
 
 ##############################################
 ## Extract and combine model diagnostics
@@ -188,15 +189,13 @@ write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4.csv")
 
 ## Explore
 a <- allpars_allmodels_diag
-View(a[which(a$variable == "Vmax" & a$rhat < 1.1),]) ## MM - Very few (9/60) Rhat < 1.1
-View(a[which(a$variable == "K" & a$rhat < 1.1),]) ## MM - Very few Rhat < 1.1
-View(a[which(a$variable == "b0" & a$rhat < 1.1),]) ## Linear - All Rhat < 1.1
-View(a[which(a$variable == "b1" & a$rhat < 1.1),]) ## Linear - All Rhat < 1.1
-View(a[which(a$variable == "mu" & a$rhat < 1.1),]) ## Mean - All Rhat < 1.1
+View(a[which(a$variable == "Vmax" & a$rhat < 1.1),])
+View(a[which(a$variable == "K" & a$rhat < 1.1),])
+View(a[which(a$variable == "n" & a$rhat < 1.1),])
+View(a[which(a$variable == "b0" & a$rhat < 1.1),])
+View(a[which(a$variable == "b1" & a$rhat < 1.1),])
+View(a[which(a$variable == "mu" & a$rhat < 1.1),])
 
-# Visualize
-ggplot(l$SS3m_May_sediment_NH3, aes(Conc, Uptake))+
-  geom_point(size=2)+theme_bw(base_size = 14)
 
 ##############################################
 ## Log-likelihood function
@@ -207,7 +206,8 @@ combined <- c(stan_data_l, all_modelfits_pars_diag)
 merged_list <- tapply(combined, names(combined), function(x) unlist(x, recursive = FALSE))
 
 listnames <- c("Mean_Model_Data","Model_Data",
-               "Pars_Mean","Pars_Linear","Pars_MM", "Diagnostics")
+               "Pars_Mean","Pars_Linear","Pars_MM",
+               "Pars_Hill","Pars_1stOrder","Diagnostics")
 
 renaming <- function(x) {
   names(x) <- listnames
@@ -232,13 +232,15 @@ log_lik_fn<-function(data,pred,sigma,iter) {
 
 ## Initial test - figure out how to run comparison
 test <- merged_list[1]
+View(test$BW0.5m_July_biofilm_NH3$Diagnostics)
 ll_test <- apply(log_lik_fn(test$BW0.5m_July_biofilm_NH3$Model_Data$y,
            test$BW0.5m_July_biofilm_NH3$Pars_Linear$ymu,
-           test$BW0.5m_July_biofilm_NH3$Pars_Mean$sigma, 4500), 2, as.numeric)
+           test$BW0.5m_July_biofilm_NH3$Pars_Linear$sigma, 10000),
+           2, as.numeric)
 
 ll_waic <- loo::waic.matrix(ll_test) #lower the value the better
 
-
+loo(ll_test)
 
 
 ## Set up function to run log likelihood function
