@@ -19,8 +19,7 @@ data {
 // The parameters accepted by the model. Our model
 // accepts two parameters 'mu' and 'sigma'.
 parameters {
-  real Vmax;
-  real K;
+  real a;
   real<lower=0> sigma;
 }
 
@@ -28,13 +27,13 @@ parameters {
 // 'y' to be normally distributed with mean 'mu'
 // and standard deviation 'sigma'.
 model {
-  y ~ normal((Vmax/K)*x, sigma);
+  y ~ normal(a*x, sigma);
 }
 
 generated quantities{
 vector[N] ymu;
 
-ymu=(Vmax/K)*x;
+ymu=a*x;
 
 }
 
