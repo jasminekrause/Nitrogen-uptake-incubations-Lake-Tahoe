@@ -192,7 +192,7 @@ extract_diag <- function(y){
 allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extract_diag(x)), data.frame)
 
 ## Save
-write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4.csv")
+write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4_2026_04_27.csv")
 
 ## Explore
 a <- allpars_allmodels_diag
@@ -202,6 +202,12 @@ View(a[which(a$variable == "n" & a$rhat < 1.1),])
 View(a[which(a$variable == "b0" & a$rhat < 1.1),])
 View(a[which(a$variable == "b1" & a$rhat < 1.1),])
 View(a[which(a$variable == "mu" & a$rhat < 1.1),])
+View(a[which(a$variable == "a" & a$rhat < 1.1),])
+View(a[which(a$variable == "a"),])
+
+ggplot(a[which(a$variable == "a"),], aes(mean))+
+  geom_histogram()+
+  scale_x_continuous(trans = "log")
 
 
 ##############################################
