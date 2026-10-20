@@ -1,7 +1,7 @@
 #Ammonium Calculation
 #Adopted from Meredith Brehob 2021
 #Krause and Loria 2023 edits
-#This code will calculate ammonium values from aqueous ammonia concentrations
+#This code read in all raw csv files and calculate ammonium values from aqueous ammonia concentrations
 #We are pulling in raw data read from the YSI during incubations
 #The data is uploaded from individual google sheets from each incubation 
 #and merged into one dataframe
@@ -22,9 +22,9 @@ setwd("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tah
 getwd()
 
 # This actually reads in with all incubation.
-May_inc <- read.csv("Step1_N_incMay_20260516.csv") [, -c(32)]
-June_inc <- read.csv("Step1_N_incJune_20260516.csv")
-July_inc <- read.csv("Step1_N_incJuly_20260516.csv")
+May_inc <- read.csv("Step1_N_incMay_20261019.csv")
+June_inc <- read.csv("Step1_N_incJune_20261019.csv")
+July_inc <- read.csv("Step1_N_incJuly_20261019.csv")
 
 colnames(May_inc)
 colnames(June_inc)
@@ -80,7 +80,7 @@ spike_df %>%
 
 # read in ammonium conversion data for later
 # pH and temperature reading from the outlet and taken with YSI on day of incubation
-df <- read_excel("Lake_data_ammonium_conversion.xlsx")
+df <- read_excel("Step1_Lake_data_ammonium_conversion.xlsx")
 # df <- read.csv("Raw/Lake_data_ammonium_conversion.csv")
 
 # merge data
@@ -140,7 +140,6 @@ Chemcheck3 <- ggplot(ammonium_df, aes(x = NH3_spike_µg_L, y = NH3_mgNL, color=L
 # clean up df
 ammonium_save <- ammonium_df %>%
   dplyr::select(-ammon_cal, -pKa, -f, -NH3_mgNL)
-# write.csv(ammonium_save, file = "Step2_NH4corrected_Ninc_data_20260515.csv", row.names = FALSE)
+# write.csv(ammonium_save, file = "Step2_NH4corrected_Ninc_data_20261019.csv", row.names = FALSE)
 
 # ggsave("Amoncheck.png", plot = Amoncheck, width = 15, height = 5, units = "in")
-
