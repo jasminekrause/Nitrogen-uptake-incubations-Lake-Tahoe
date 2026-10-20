@@ -1,26 +1,31 @@
 #### Uptake Rate Calculation Workflow
 #### Script created by: Heili Lowman, KAL, JAK
 
-#1. Data is adjusted by nutrient concentration and time
-#If the NO3 or NH4 value is below detection we cut the value in half
-#If there is no recorded time we use the averaged time across experiments ~6:46:00
-#Filter out values less than 0
-#East shore June NH4 background was anomalously high - replaced with mean of May & July
-#Spike concentrations of 0 are set to 0 (not mean water conc)
-#Missing BW3m July 100ug/L spike conc hardcoded to 117.5
+#1. Data cleaning
+#Concentration taken from the column matching the analyte (NH4_mgNL or NO2_NO3_mgNL)
+#Values below detection (incl. negatives) set to half the detection limit:
+#  NH4 < 0.002 mg N/L -> 0.001 ; NO3 < 0.003 mg N/L -> 0.0015
+#Rows with missing concentrations (NA) are removed
+#Spike concentrations of 0 are set to 0 (DI water, not mean lake water conc)
+#Missing west shore July 100 ug/L spike conc set to 117.5
+#June vials 184-186, 196-198, 292-294: end time was entered as duration;
+#  replaced with end - start time
+#Vials with no recorded time assigned the mean incubation time of incubated
+#  vials (excludes DI spikes; ~6.7 h)
 
-#2. Calculate change in incubation concentrations
-#Filter out all incubated samples and group them by triplicates, calc the mean
-#Next, we filter the spiked mean values, which represent the baseline prior to incubation
-#SH samples assigned to GB water corrections, SS samples assigned to BW water corrections
+#2. Pre-incubation concentrations
+#Spike (DI) standards averaged by shore, month, analyte, and spike level;
+#  this mean is used as the pre-incubation concentration (C_pre)
+#SH samples corrected with GB water, SS samples corrected with BW water
 
 #3. Calc uptake rates
-#We will subtract each mean spike conc from each incubated samples and divide by
-#time incubated
-#Subtract the uptake that occurred in the water column
-#And finally corrected for organic matter (OM) in sediments and biofilm
-#OM correction: multiply by volume lake water (L), divide by grams OM
-#Units: ugN / g OM·hr, sign flipped so uptake is positive
+#Rate of change per vial = (C_post - C_pre) / incubation time
+#Pelagic rate = mean of lake water triplicates (month, analyte, spike level)
+#Net substrate rate = vial rate - pelagic rate
+#OM correction: multiply by volume lake water (L), divide by g OM per vial
+#  (g OM from data file: sediment = wet g x % dry x % OM;
+#   biofilm = g OM/L slurry x 0.002 L)
+#Units: ug N / g OM·hr, sign flipped so uptake is positive
 
 #4. Tidy data and visualize
 #Select key columns for export
@@ -47,7 +52,7 @@ setwd("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tah
 getwd()
 
 # Load raw datasets.
-dat_raw <- read.csv("Step2_NH4corrected_Ninc_data_20260515.csv", header = T)
+dat_raw <- read.csv("Step2_NH4corrected_Ninc_data_20261019.csv", header = T)
 
 # Check data structure.
 str(dat_raw)
@@ -85,23 +90,21 @@ print(average_incubation_hours)
 # kinds of lake water to account for any pre-existing concentrations of either.
 
 # # if they are below the limit of detection, set them at half of the limit of detection.
-# # Ammonia - 0.002 mg N/L
-# # Nitrate - 0.003 mg N/L
-
+# Below detection: set to half the detection limit
+# NH4 < 0.002 mg N/L -> 0.001 ; NO3 < 0.003 mg N/L -> 0.0015
 
 dat_raw2 <- dat_raw1 %>%
   mutate(
-    Conc_mgNL_ed = pmin(NH4_mgNL, NO2_NO3_mgNL, na.rm = TRUE),  # Populate with non-NA values from NH4_mgNL and NO2_NO3_mgNL
+    # pick the concentration column that matches the analyte
+    Conc_mgNL_ed = case_when(Analyte == "NH3" ~ NH4_mgNL,
+                             Analyte == "NO3" ~ NO2_NO3_mgNL),
+    # below detection (incl. negatives) -> half the detection limit
     Conc_mgNL_ed = case_when(
-      Conc_mgNL_ed < 0.002 ~ ifelse(Analyte == "NH3", 0.001, Conc_mgNL_ed),  # If NH4_mgNL < 0.002, set to 0.001
-      Conc_mgNL_ed < 0.003 & Analyte == "NO3" ~ 0.0015,  # If NO2_NO3_mgNL < 0.003 and Analyte is NO3, set to 0.0015
-      TRUE ~ Conc_mgNL_ed  # Otherwise, keep the original value
-    ),
-    Conc_ugNLK = 1000 * Conc_mgNL_ed,
-    real_icu_time = ifelse(is.na(real_icu_time), "06:46:00", 
-      real_icu_time)
-  ) %>%
-  ungroup()
+      Analyte == "NH3" & Conc_mgNL_ed < 0.002 ~ 0.001,
+      Analyte == "NO3" & Conc_mgNL_ed < 0.003 ~ 0.0015,
+      TRUE ~ Conc_mgNL_ed),
+    Conc_ugNLK = 1000 * Conc_mgNL_ed
+  )
 
 #filter out values less than 0
 dat_raw_nozero <- dat_raw2 %>%
@@ -175,6 +178,7 @@ ggplot(background_df,
     color = "Shore"
   )
 
+
 ### east shore june is very high. take the average of may and july
 # calculate mean spike conc for GB June NH3 Spike=0 using May and July
 GB_june_NH3_fix <- mean_spike_conc_df %>%
@@ -210,8 +214,8 @@ dat_raw_nozerob %>%
 dat_raw_nozerob$Mean_Spike_Conc[dat_raw_nozerob$Spike_µg_L == 0] <- 0
 
 # There was some missing spike concentrations for 100 ug/L for BW3m July
-dat_raw_nozerob$Mean_Spike_Conc[dat_raw_nozerob$Spike_µg_L == 100 & is.na(dat_raw_nozerob$Mean_Spike_Conc)] <- 117.5
-
+idx <- dat_raw_nozerob$Spike_µg_L == 100 & is.na(dat_raw_nozerob$Mean_Spike_Conc) &
+  dat_raw_nozerob$Inc_month == "July" & dat_raw_nozerob$Shore == "W"
 
 
 
@@ -225,10 +229,24 @@ dat_raw_nozerob$Mean_Spike_Conc[dat_raw_nozerob$Spike_µg_L == 100 & is.na(dat_r
 # Correct the calculation of change in concentration
 dat_raw_nozeroc <- dat_raw_nozerob %>%
   mutate(
-    delta_Conc_ugNL = Conc_ugNLK - Mean_Spike_Conc, # Subtract mean spike concentration
-    real_icu_hr = hour(as_hms(real_icu_time)) + (minute(as_hms(real_icu_time)) / 60), # Calculate total hours
-    real_icu_hrc = ifelse(is.na(real_icu_time) | real_icu_hr > 7 + 41/60, 6 + 46/60, real_icu_hr), # Correct ICU hours
-    delta_Conc_ugNLhr = delta_Conc_ugNL / real_icu_hrc # Calculate delta Conc_?gNL per hour
+    delta_Conc_ugNL = Conc_ugNLK - Mean_Spike_Conc,
+    real_icu_hr = hour(as_hms(real_icu_time)) + minute(as_hms(real_icu_time)) / 60,
+    # end times entered as durations -> actual durations
+    real_icu_hr = case_when(
+      Inc_month == "June" & Vial_num %in% 184:186 ~ (15 + 11/60) - (8 + 49/60),
+      Inc_month == "June" & Vial_num %in% 196:198 ~ 15 - 9,
+      Inc_month == "June" & Vial_num %in% 292:294 ~ (14 + 42/60) - (9 + 18/60),
+      TRUE ~ real_icu_hr)
+  )
+
+# mean incubation time of incubated vials (excludes DI spikes)
+mean_inc_hr <- mean(dat_raw_nozeroc$real_icu_hr[dat_raw_nozeroc$Type != "spike"], na.rm = TRUE)
+mean_inc_hr
+
+dat_raw_nozeroc <- dat_raw_nozeroc %>%
+  mutate(
+    real_icu_hrc = ifelse(is.na(real_icu_hr), mean_inc_hr, real_icu_hr),
+    delta_Conc_ugNLhr = delta_Conc_ugNL / real_icu_hrc
   )
 
 # Calculate mean uptake rates for water using Assigned_Location for grouping
@@ -272,38 +290,14 @@ dat_raw_nozeroc %>%
   theme(legend.position = "none")
 
 
-#### correct spike values for organic matter (percent) by multiplying by dry weight
-# Multiply by the volume of lake water in L
-# Divide by the grams of OM 
-# Make uptake rates mostly positive to visualize.
-# Final units are in ugN/g OM-hr
-# read in OM
-om <- read_csv("/Users/jasminekrause/Desktop/Lab Tech Position UNR/Nearshore Greening Tahoe/RProj Nearshore Greening/Raw_dat/Step2_clean_ninc_om.csv")
+# #### correct spike values for organic matter (g) 
+# # Multiply by the volume of lake water in L
+# # Divide by the grams of OM 
+# # Make uptake rates mostly positive to visualize.
+# # Final units are in ugN/g OM-hr
 
-# standardize site names in om to match dat_raw_nozero
-om_clean <- om %>%
-  mutate(Site = case_when(
-    Site %in% c("BW0.5m_a", "BW0.5m") ~ "BW0.5m",
-    Site %in% c("BWNS1", "BWNS2", "BWNS3") ~ "BW_3m",
-    Site == "BW10m"  ~ "BW_10m",
-    Site %in% c("SSNS1", "SSNS2", "SSNS3", "SSNS") ~ "SS_3m",
-    Site == "GB0.5m" ~ "GB0.5m",
-    Site %in% c("GBNS1", "GBNS2", "GBNS3") ~ "GB_3m",
-    Site == "GB10m"  ~ "GB_10m",
-    Site %in% c("SHNS1", "SHNS2", "SHNS3") ~ "SH_3m",
-    TRUE ~ Site
-  )) %>%
-  group_by(Site, Date) %>%
-  summarise(pct_OM = mean(pct_OM, na.rm = TRUE), .groups = "drop")
-
-# join and calculate OM-corrected uptake
 dat_raw_nozero_om <- dat_raw_nozero %>%
-  mutate(Sample_Date = as.Date(Sample_Date)) %>%
-  left_join(om_clean, by = c("Site", "Sample_Date" = "Date")) %>%
-  mutate(
-    OM_g = Sample_dryweight_g * pct_OM,
-    net_delta_Conc_ugNLhr_OM = ((-1 * net_delta_Conc_ugNLhr * Volume_lake_water_L) / OM_g)
-  )
+  mutate(net_delta_Conc_ugNLhr_OM = (-1 * net_delta_Conc_ugNLhr * Volume_lake_water_L) / OM_g)
 
 #
 dat_raw_nozero_om %>%
@@ -354,8 +348,8 @@ check_dat_tidy
 #ggsave("check_dat_tidy_plot.png", check_dat_tidy, width = 10, height = 6, dpi = 300)
 
 # Export for use in Michaelis-Menten calculation script.
-# saveRDS(dat_tidy, "Step2_N_Incubation_Uptake_Rates_20250615.rds")
-# write_csv(dat_tidy, "N_Incubation_Uptake_Rates_20240924.csv")
+# saveRDS(dat_tidy, "Step2_N_Incubation_Uptake_Rates_20261019.rds")
+# write_csv(dat_tidy, "N_Incubation_Uptake_Rates_20261019.csv")
 
 
 # End of script.
