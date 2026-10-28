@@ -36,7 +36,7 @@ colnames(df) <- c("Inc_ID","Conc","Uptake")
 # Create a list
 l <- split(df, df$Inc_ID)
 
-# Visualize
+# Visualize subset
 lapply(l[30:40], function(x) ggplot(x, aes(Conc, Uptake))+
          geom_point(size=2)+theme_bw(base_size = 14)+
          labs(title = x$Inc_ID[1]))
@@ -131,7 +131,7 @@ all_model_fit <- function(x){
 
   ## Extract model fit diagnostics and compile
   diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:2,]
-  diag_1stOrder <- summarize_draws(as_draws_df(fit_1stOrder))[1:3,]
+  diag_1stOrder <- summarize_draws(as_draws_df(fit_1stOrder))[1:2,]
   diag_linear <- summarize_draws(as_draws_df(fit_linear))[1:3,]
   diag_MM <- summarize_draws(as_draws_df(fit_MM))[1:3,]
 
@@ -155,7 +155,7 @@ all_model_fit <- function(x){
 
 all_modelfits_pars_diag <- lapply(stan_data_l, function(x) all_model_fit(x))
 # Save output locally (but in folder under gitignore)
-saveRDS(all_modelfits_pars_diag, "../rds files/modelfits_iter5k_chains4_2026_04_27.rds")
+saveRDS(all_modelfits_pars_diag, "../rds files/modelfits_iter5k_chains4_2026_10_28.rds")
 
 #all_modelfits_pars_diag <- readRDS("../rds files/modelfits_iter5k_chains4.rds")
 
@@ -171,18 +171,22 @@ extract_diag <- function(y){
 allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extract_diag(x)), data.frame)
 
 ## Save
-write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4_2026_04_27.csv")
+write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4_2026_10_28.csv")
 
 ## Explore
 a <- allpars_allmodels_diag
-View(a[which(a$variable == "Vmax" & a$rhat < 1.1),])
-View(a[which(a$variable == "K" & a$rhat < 1.1),])
-View(a[which(a$variable == "n" & a$rhat < 1.1),])
+
+# Mean (null)
+View(a[which(a$variable == "mu" & a$rhat < 1.1),])
+# 1st order
+View(a[which(a$variable == "a" & a$rhat < 1.1),])
+# Linear
 View(a[which(a$variable == "b0" & a$rhat < 1.1),])
 View(a[which(a$variable == "b1" & a$rhat < 1.1),])
-View(a[which(a$variable == "mu" & a$rhat < 1.1),])
-View(a[which(a$variable == "a" & a$rhat < 1.1),])
-View(a[which(a$variable == "a"),])
+# M-M
+View(a[which(a$variable == "Vmax" & a$rhat < 1.1),])
+View(a[which(a$variable == "K" & a$rhat < 1.1),])
+
 
 ggplot(a[which(a$variable == "a"),], aes(mean))+
   geom_histogram()+
@@ -198,8 +202,9 @@ combined <- c(stan_data_l, all_modelfits_pars_diag)
 merged_list <- tapply(combined, names(combined), function(x) unlist(x, recursive = FALSE))
 
 listnames <- c("Mean_Model_Data","Model_Data",
-               "Pars_Mean","Pars_Linear","Pars_MM",
-               "Pars_Hill","Pars_1stOrder","Diagnostics")
+               "Pars_Mean","Pars_1stOrder",
+               "Pars_Linear","Pars_MM",
+               "Diagnostics")
 
 renaming <- function(x) {
   names(x) <- listnames
@@ -231,27 +236,42 @@ ll_test <- apply(log_lik_fn(test$BW0.5m_July_biofilm_NH3$Model_Data$y,
            2, as.numeric)
 
 ll_waic <- loo::waic.matrix(ll_test) #lower the value the better
+#waic does not appear to work well
 
 loo(ll_test)
 
 
-## Set up function to run log likelihood function
-ll_mods_except_mean <- function(x, iter){
+########################################################
+## Function to run log likelihood function across models
+########################################################
+
+ll_mods_except_mean <- function(y, iter){
+  
+  x <- y[[1]]
 
   ## Run Log likelihood function (data,pred,sigma,iter)
-  ll_linear <- log_lik_fn(x$Model_Data$ymu,
+  ll_1storder <- apply(log_lik_fn(x$Model_Data$y,
+                            x$Pars_1stOrder$ymu,
+                            x$Pars_1stOrder$sigma, iter),2,as.numeric)
+  ll_linear <- apply(log_lik_fn(x$Model_Data$y,
                           x$Pars_Linear$ymu,
-                          x$Pars_Linear$sigma, iter)
-  ll_MM <- log_lik_fn(MM_dat, pars_<MM$mu, pars_MM$sigma, 4500)
+                          x$Pars_Linear$sigma, iter),2,as.numeric)
+  ll_MM <- apply(log_lik_fn(x$Model_Data$y,
+                      x$Pars_MM$ymu,
+                      x$Pars_MM$sigma, iter),2,as.numeric)
   
-  ll_list <- list(ll_mean, ll_linear, ll_MM)
+  ll_list <- list(ll_1storder, ll_linear, ll_MM)
+  names(ll_list) <- c("ll_1storder","ll_linear","ll_MM")
   
   return(ll_list)
   
-  
 }
 
-ll_ouput <- lapply(merged_list[1], function(x) ll_mods(x))
+
+z <- ll_mods_except_mean(merged_list[1],10000)
+t <- ll_mods_except_mean(merged_list[2],10000)
+
+ll_ouput <- lapply(merged_list, function(x) ll_mods_except_mean(x, 10000))
 
 
 waic.matrix(ll_output$ll_mean)
