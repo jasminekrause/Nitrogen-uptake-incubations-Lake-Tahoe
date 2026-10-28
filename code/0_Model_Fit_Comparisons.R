@@ -12,7 +12,7 @@ library(loo)
 library(posterior)
 
 ## Import data
-dat_filtered <- read.csv("../data/Filtered_NUptake_2026_04_20.csv")
+dat_filtered <- read.csv("../om_corrected_data/Filtered_NUptake_2026_10_28.csv")
 
 #####################################################################
 ## Create lists of site-month-type-analyte data frames
@@ -37,7 +37,7 @@ colnames(df) <- c("Inc_ID","Conc","Uptake")
 l <- split(df, df$Inc_ID)
 
 # Visualize
-lapply(l[50:60], function(x) ggplot(x, aes(Conc, Uptake))+
+lapply(l[30:40], function(x) ggplot(x, aes(Conc, Uptake))+
          geom_point(size=2)+theme_bw(base_size = 14)+
          labs(title = x$Inc_ID[1]))
 
@@ -86,21 +86,6 @@ test_MM <- stan("MM_Model_Nuptake.stan",
 launch_shinystan(test_MM)
 summarize_draws(as_draws_df(test_MM))
 
-#Hill Model
-test_Hill <- stan("Hill_Model_Nuptake.stan",
-                data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
-                chains=3,iter=2000, control=list(max_treedepth=12))
-launch_shinystan(test_Hill)
-summarize_draws(as_draws_df(test_Hill))
-
-
-#1stOrder Model
-test_1stOrder <- stan("1stOrder_Model_Nuptake.stan",
-                  data=stan_data_l$BW0.5m_June_sediment_NH3$Model_Data,
-                  chains=3,iter=2000, control=list(max_treedepth=12))
-launch_shinystan(test_1stOrder)
-summarize_draws(as_draws_df(test_1stOrder))
-
 
 #######################################
 ## Fit each model to each incubation
@@ -117,6 +102,12 @@ all_model_fit <- function(x){
                    chains=4,iter=5000,
                    control=list(max_treedepth=12))
   
+  #1stOrder Model
+  fit_1stOrder <- stan("1stOrder_Model_Nuptake.stan",
+                       data=dat,
+                       chains=4,iter=5000,
+                       control=list(max_treedepth=12))
+  
   #Linear Model
   fit_linear <- stan("Linear_Model_Nuptake.stan",
                      data=dat,
@@ -129,46 +120,34 @@ all_model_fit <- function(x){
                  chains=4,iter=5000,
                  control=list(max_treedepth=12))
   
-  #Hill Model
-  fit_Hill <- stan("Hill_Model_Nuptake.stan",
-                 data=dat,
-                 chains=4,iter=5000,
-                 control=list(max_treedepth=12))
-  
-  #1stOrder Model
-  fit_1stOrder <- stan("1stOrder_Model_Nuptake.stan",
-                   data=dat,
-                   chains=4,iter=5000,
-                   control=list(max_treedepth=12))
+
   
   
   ## Extract parameters
   parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
+  parsout_1stOrder<-extract(fit_1stOrder,pars=c('a','sigma','ymu'))  
   parsout_linear<-extract(fit_linear,pars=c('b0','b1','sigma','ymu'))
   parsout_MM<-extract(fit_MM,pars=c('Vmax','K','sigma','ymu'))
-  parsout_Hill<-extract(fit_Hill,pars=c('Vmax','K','n','sigma','ymu'))
-  parsout_1stOrder<-extract(fit_1stOrder,pars=c('a','sigma','ymu'))
-  
+
   ## Extract model fit diagnostics and compile
-  diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:3,]
+  diag_mean <- summarize_draws(as_draws_df(fit_mean))[1:2,]
+  diag_1stOrder <- summarize_draws(as_draws_df(fit_1stOrder))[1:3,]
   diag_linear <- summarize_draws(as_draws_df(fit_linear))[1:3,]
   diag_MM <- summarize_draws(as_draws_df(fit_MM))[1:3,]
-  diag_Hill <- summarize_draws(as_draws_df(fit_Hill))[1:4,]
-  diag_1stOrder <- summarize_draws(as_draws_df(fit_1stOrder))[1:3,]
+
   
   diag_mean$model <- "mean"
+  diag_1stOrder$model <- "1stOrder"
   diag_linear$model <- "linear"
   diag_MM$model <- "MM"
-  diag_Hill$model <- "Hill"
-  diag_1stOrder$model <- "1stOrder"
-  diagnostics <- rbind(diag_mean, diag_linear, diag_MM, diag_Hill, diag_1stOrder)
+
+  diagnostics <- rbind(diag_mean, diag_1stOrder, diag_linear, diag_MM)
   
   parsout_list <- list("Pars_Mean" = parsout_mean,
-                   "Pars_Linear" = parsout_linear,
-                   "Pars_MM" = parsout_MM,
-                   "Pars_Hill" = parsout_Hill,
-                   "Pars_1stOrder" = parsout_1stOrder,
-                   "Diagnostics" = diagnostics)
+                       "Pars_1stOrder" = parsout_1stOrder,
+                       "Pars_Linear" = parsout_linear,
+                       "Pars_MM" = parsout_MM,
+                       "Diagnostics" = diagnostics)
   
   return(parsout_list)
   
