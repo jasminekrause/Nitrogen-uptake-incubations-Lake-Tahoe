@@ -292,7 +292,10 @@ ll_comparison_loo <- function(x){
 
 
 output_loo_comparisons <- lapply(ll_output, function(y) ll_comparison_loo(y))
+output_loo_df <- ldply(output_loo_comparisons, data.frame)
 
-
+## save both
+saveRDS(output_loo_comparisons, "../rds files/loo_comparisons_2026_10_29.rds")
+write.csv(output_loo_df, "../data/loo_comparisons_df_2026_10_29.csv")
 
 
