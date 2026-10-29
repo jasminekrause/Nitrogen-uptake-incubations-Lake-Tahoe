@@ -120,8 +120,6 @@ all_model_fit <- function(x){
                  chains=4,iter=5000,
                  control=list(max_treedepth=12))
   
-
-  
   
   ## Extract parameters
   parsout_mean<-extract(fit_mean,pars=c('mu','sigma'))
@@ -157,7 +155,7 @@ all_modelfits_pars_diag <- lapply(stan_data_l, function(x) all_model_fit(x))
 # Save output locally (but in folder under gitignore)
 saveRDS(all_modelfits_pars_diag, "../rds files/modelfits_iter5k_chains4_2026_10_28.rds")
 
-#all_modelfits_pars_diag <- readRDS("../rds files/modelfits_iter5k_chains4.rds")
+#all_modelfits_pars_diag <- readRDS("../rds files/modelfits_iter5k_chains4_2026_10_28.rds")
 
 ##############################################
 ## Extract and combine model diagnostics
@@ -172,6 +170,7 @@ allpars_allmodels_diag <- ldply(lapply(all_modelfits_pars_diag, function(x) extr
 
 ## Save
 write.csv(allpars_allmodels_diag, "../data/allpars_diag_iter5k_chains4_2026_10_28.csv")
+
 
 ## Explore
 a <- allpars_allmodels_diag
@@ -229,7 +228,7 @@ log_lik_fn<-function(data,pred,sigma,iter) {
 
 ## Initial test - figure out how to run comparison
 test <- merged_list[1]
-View(test$BW0.5m_July_biofilm_NH3$Diagnostics)
+View(test[[1]]$Diagnostics)
 ll_test <- apply(log_lik_fn(test$BW0.5m_July_biofilm_NH3$Model_Data$y,
            test$BW0.5m_July_biofilm_NH3$Pars_Linear$ymu,
            test$BW0.5m_July_biofilm_NH3$Pars_Linear$sigma, 10000),
@@ -245,11 +244,14 @@ loo(ll_test)
 ## Function to run log likelihood function across models
 ########################################################
 
-ll_mods_except_mean <- function(y, iter){
+ll_models <- function(z, iter){
   
-  x <- y[[1]]
+  x <- z[[1]]
 
   ## Run Log likelihood function (data,pred,sigma,iter)
+  ll_mean <- apply(log_lik_fn(x$Model_Data$y,
+                              matrix(x$Pars_Mean$mu,10000,x$Model_Data$N),
+                              matrix(x$Pars_Mean$sigma,10000,x$Model_Data$N), iter),2,as.numeric)
   ll_1storder <- apply(log_lik_fn(x$Model_Data$y,
                             x$Pars_1stOrder$ymu,
                             x$Pars_1stOrder$sigma, iter),2,as.numeric)
@@ -260,21 +262,28 @@ ll_mods_except_mean <- function(y, iter){
                       x$Pars_MM$ymu,
                       x$Pars_MM$sigma, iter),2,as.numeric)
   
-  ll_list <- list(ll_1storder, ll_linear, ll_MM)
-  names(ll_list) <- c("ll_1storder","ll_linear","ll_MM")
+  ll_list <- list(ll_mean, ll_1storder, ll_linear, ll_MM)
+  names(ll_list) <- c("ll_mean","ll_1storder","ll_linear","ll_MM")
   
   return(ll_list)
   
 }
 
-
-z <- ll_mods_except_mean(merged_list[1],10000)
-t <- ll_mods_except_mean(merged_list[2],10000)
-
-ll_ouput <- lapply(merged_list, function(x) ll_mods_except_mean(x, 10000))
+ll_output <- lapply(merged_list[3:5], function(z) ll_models(z, 10000))
+test <- ll_models(merged_list[8], 10000)
 
 
-waic.matrix(ll_output$ll_mean)
+
+##################
+## loo comparison
+##################
+z <- ll_models(merged_list[1], 10000)
+
+z1 <- loo(z$ll_1storder)
+z2 <- loo(z$ll_linear)
+
+loo_compare(z1, z2)
+
 
 
 
