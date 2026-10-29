@@ -282,16 +282,16 @@ ll_comparison_loo <- function(x){
   loo_linear <- loo(x$ll_linear)
   loo_MM <- loo(x$ll_MM)
   
-  comparison <- loo_compare(loo_mean,
-                            loo_1storder,
-                            loo_linear,
-                            loo_MM)
+  comparison <- loo_compare(loo_mean, #model 1
+                            loo_1storder, #model 2
+                            loo_linear, #model 3
+                            loo_MM) #model 4
   return(comparison)
   
 }
 
 
-output_loo_comparisons <- lapply(ll_output[1:3], function(y) ll_comparison_loo(y))
+output_loo_comparisons <- lapply(ll_output, function(y) ll_comparison_loo(y))
 
 
 
