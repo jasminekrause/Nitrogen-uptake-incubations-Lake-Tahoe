@@ -298,4 +298,4 @@ output_loo_df <- ldply(output_loo_comparisons, data.frame)
 saveRDS(output_loo_comparisons, "../rds files/loo_comparisons_2026_10_29.rds")
 write.csv(output_loo_df, "../data/loo_comparisons_df_2026_10_29.csv")
 
-
+## read about errors: https://mc-stan.org/loo/reference/loo-glossary.html
