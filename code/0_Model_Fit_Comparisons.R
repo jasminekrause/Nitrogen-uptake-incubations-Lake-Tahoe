@@ -244,14 +244,12 @@ loo(ll_test)
 ## Function to run log likelihood function across models
 ########################################################
 
-ll_models <- function(z, iter){
-  
-  x <- z[[1]]
+ll_models <- function(x, iter){
 
   ## Run Log likelihood function (data,pred,sigma,iter)
   ll_mean <- apply(log_lik_fn(x$Model_Data$y,
-                              matrix(x$Pars_Mean$mu,10000,x$Model_Data$N),
-                              matrix(x$Pars_Mean$sigma,10000,x$Model_Data$N), iter),2,as.numeric)
+                              matrix(x$Pars_Mean$mu,iter,x$Model_Data$N),
+                              matrix(x$Pars_Mean$sigma,iter,x$Model_Data$N), iter),2,as.numeric)
   ll_1storder <- apply(log_lik_fn(x$Model_Data$y,
                             x$Pars_1stOrder$ymu,
                             x$Pars_1stOrder$sigma, iter),2,as.numeric)
@@ -269,20 +267,31 @@ ll_models <- function(z, iter){
   
 }
 
-ll_output <- lapply(merged_list[3:5], function(z) ll_models(z, 10000))
-test <- ll_models(merged_list[8], 10000)
-
-
+ll_output <- lapply(merged_list, function(z) ll_models(z, 10000))
+saveRDS(ll_output,"../rds files/ll_output_2026_10_28.rds")
 
 ##################
-## loo comparison
+## Loo comparison
 ##################
-z <- ll_models(merged_list[1], 10000)
 
-z1 <- loo(z$ll_1storder)
-z2 <- loo(z$ll_linear)
+ll_comparison_loo <- function(x){
+  
+  #run a loo test on each ll output
+  loo_mean <- loo(x$ll_mean)
+  loo_1storder <- loo(x$ll_1storder)
+  loo_linear <- loo(x$ll_linear)
+  loo_MM <- loo(x$ll_MM)
+  
+  comparison <- loo_compare(loo_mean,
+                            loo_1storder,
+                            loo_linear,
+                            loo_MM)
+  return(comparison)
+  
+}
 
-loo_compare(z1, z2)
+
+output_loo_comparisons <- lapply(ll_output[1:3], function(y) ll_comparison_loo(y))
 
 
 
