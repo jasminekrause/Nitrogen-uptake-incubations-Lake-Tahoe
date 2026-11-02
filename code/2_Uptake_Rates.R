@@ -240,27 +240,6 @@ ggsave(plot=pel_plot, "Step_1/figures/pel_plot.png",width=16, height=8)
 # influence: pelagic correction vs substrate rate at the same level
 upt <- calc_net(vials_use)
 
-pel_infl <- upt %>%
-  group_by(Inc_month, Assigned_Location, Site, Type, Analyte, Spike_µg_L) %>%
-  summarise(sub_rate = mean(delta_Conc_ugNLhr),
-            pel_rate = first(water_delta_Conc_ugNLhr),
-            pel_sd   = first(water_sd),
-            n_water  = first(n_water),
-            net_rate = mean(net_delta_Conc_ugNLhr), .groups = "drop") %>%
-  mutate(pel_share = abs(pel_rate) / (abs(sub_rate) + abs(pel_rate)),   # 0-1, share of correction
-         sd_ratio  = pel_sd / abs(net_rate))                            # pelagic noise vs net signal
-
-# check: groups where pelagic correction is > half the signal, or noise > net
-pel_infl %>% filter(pel_share > 0.5 | sd_ratio > 1) %>%
-  arrange(desc(pel_share)) %>% print(n = Inf)
-pel_infl %>% summarise(median_share   = median(pel_share, na.rm = TRUE),
-                       prop_over_half = mean(pel_share > 0.5, na.rm = TRUE))
-
-# check: gross (no correction) vs net uptake per site, month, and spike level
-gross_net <- upt %>%
-  group_by(Site, Location, Inc_month, Type, Analyte, Spike_µg_L) %>%
-  summarise(gross = mean(-delta_Conc_ugNLhr), net = mean(-net_delta_Conc_ugNLhr), .groups = "drop")
-
 pelagic_net_plt <- ggplot(gross_net, aes(gross, net, color = Location, shape = Type)) +
   geom_abline(linetype = "dashed") +
   geom_hline(yintercept = 0, color = "grey80") + geom_vline(xintercept = 0, color = "grey80") +
