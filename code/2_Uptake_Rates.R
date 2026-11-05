@@ -1,15 +1,15 @@
 #### Step 2: Uptake rate calculation ####
 # Script created by: Heili Lowman, KAL, JAK
 #
-# 1.   Read and check data
-# 2.   Incubation time
-# 3.   Spike standards: check outliers, then drop; C_pre = mean spike standard
-#      by shore, month, analyte, spike level (0 spike = ambient lake water)
-# 4.   Vial rate = (C_post - C_pre) / incubation h
-# 5.   Sample outliers: look, check influence, then drop
-# 6.   Pelagic rate = mean lake-water vials (SH uses GB water, SS uses BW water);
-#      check spread and influence on net uptake
-# 7.   Net = vial rate - pelagic rate; OM uptake = -net x V / g OM (ug N g OM-1 h-1)
+# 1. Read and check data
+# 2. Incubation time
+# 3. Spike standards: check outliers, then drop; C_pre = mean spike standard
+#    by shore, month, analyte, spike level (0 spike = ambient lake water)
+# 4. Vial rate = (C_post - C_pre) / incubation h
+# 5. Sample outliers: look, check influence, then drop
+# 6. Pelagic rate = mean lake-water vials (SH uses GB water, SS uses BW water);
+#    check spread and influence on net uptake
+# 7. Net = vial rate - pelagic rate; OM uptake = -net x V / g OM (ug N g OM-1 h-1)
 
 library(tidyverse)
 library(patchwork)
@@ -34,7 +34,7 @@ dat <- read_csv("Step_1/Step1_NH4_OM_Ninc_data.csv", show_col_types = FALSE) %>%
   mutate(Inc_month = factor(Inc_month, levels = month_levels),
          flag      = replace_na(qc_flag, "ok"))
 
-count(dat, Inc_month, Type) %>% pivot_wider(names_from = Type, values_from = n)   # spikes each month?
+count(dat, Inc_month, Type) %>% pivot_wider(names_from = Type, values_from = n)
 count(dat, flag)
 
 # check vials all have a concentration
@@ -225,7 +225,7 @@ vials_use <- vials %>% filter(flag != "sample_outlier")
 
 
 
-#### 6. Pelagic (lake water) uptake ####
+#### 6. Pelagic uptake ####
 water_vials <- vials_use %>% filter(Type == "water")
 
 # visualize spread
