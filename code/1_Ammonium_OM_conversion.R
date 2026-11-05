@@ -24,7 +24,7 @@ bio  <- read_csv("Step_1/Step1_biofilm_OM.csv", show_col_types = FALSE)
 lake <- read_excel("Step_1/Step1_Lake_data_ammonium_conversion.xlsx")  # Shore, Inc_month, Temp_degC, pH
 
 inc <- inc %>%
-  filter(!is.na(Type)) %>%                                   # drop empty rows
+  filter(!is.na(Type)) %>% # drop empty rows
   mutate(Sample_Date = as.Date(Sample_Date),
          Location    = str_sub(Site, 1, 2),
          Shore       = case_when(Location %in% c("GB", "SH") ~ "E",
@@ -158,7 +158,7 @@ flags <- inc %>% filter(!is.na(qc_flag)) %>%
 print(flags, n = Inf)
 count(inc, qc_flag)
 
-# flagged vials by site (change type to "biofilm" or "water")
+# flagged vials by site
 plot_flags <- function(type) inc %>%
   filter(Type == type, !is.na(Analyte)) %>%
   ggplot(aes(Spike_µg_L, Conc_ugNL, color = replace_na(qc_flag, "ok"))) +
